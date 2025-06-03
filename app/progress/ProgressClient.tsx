@@ -30,7 +30,7 @@ import {
   HealthReport,
   AIInsight
 } from '../types';
-import AppLayout from '../../src/components/layout/AppLayout';
+import AppLayout from '../components/layout/AppLayout';
 
 interface ProgressMetrics {
   weightChange: number;

@@ -25,12 +25,13 @@ import {
   Globe,
   Moon,
   Sun,
-  Smartphone
+  Smartphone,
+  AlertTriangle
 } from 'lucide-react';
 import { databaseService } from '../services/database';
 import { HealthCalculations } from '../utils/healthCalculations';
 import { UserProfile, UserPreferences, Goal } from '../types';
-import AppLayout from '../../src/components/layout/AppLayout';
+import AppLayout from '../components/layout/AppLayout';
 
 export default function ProfileClient() {
   const [isLoading, setIsLoading] = useState(true);
@@ -199,22 +200,32 @@ export default function ProfileClient() {
     setHasChanges(false);
   };
 
-  const updatePreference = async <K extends keyof UserPreferences>(
-    category: K,
-    key: keyof UserPreferences[K],
+  const updatePreference = async (
+    category: keyof UserPreferences,
+    key: string,
     value: any
   ) => {
     if (!profile) return;
 
-    const updatedProfile = {
+    const updatedPreferences = { ...profile.preferences };
+    
+    if (category === 'notifications') {
+      updatedPreferences.notifications = {
+        ...updatedPreferences.notifications,
+        [key]: value,
+      };
+    } else if (category === 'privacy') {
+      updatedPreferences.privacy = {
+        ...updatedPreferences.privacy,
+        [key]: value,
+      };
+    } else {
+      (updatedPreferences as any)[category] = value;
+    }
+
+    const updatedProfile: UserProfile = {
       ...profile,
-      preferences: {
-        ...profile.preferences,
-        [category]: {
-          ...profile.preferences[category],
-          [key]: value,
-        },
-      },
+      preferences: updatedPreferences,
     };
 
     try {

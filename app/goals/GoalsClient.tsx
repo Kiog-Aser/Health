@@ -5,7 +5,7 @@ import { Plus, Target, Calendar, TrendingUp, Award, Edit, Trash2, CheckCircle } 
 import { databaseService } from '../services/database';
 import { HealthCalculations } from '../utils/healthCalculations';
 import { Goal, Milestone } from '../types';
-import AppLayout from '../../src/components/layout/AppLayout';
+import AppLayout from '../components/layout/AppLayout';
 
 export default function GoalsClient() {
   const [goals, setGoals] = useState<Goal[]>([]);

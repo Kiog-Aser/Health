@@ -5,7 +5,7 @@ import { Plus, TrendingUp, TrendingDown, Minus, Activity, Calendar, Edit, Trash2
 import { databaseService } from '../services/database';
 import { HealthCalculations } from '../utils/healthCalculations';
 import { BiomarkerEntry, BiomarkerType } from '../types';
-import AppLayout from '../../src/components/layout/AppLayout';
+import AppLayout from '../components/layout/AppLayout';
 
 const BIOMARKER_CONFIGS = {
   weight: { name: 'Weight', unit: 'kg', icon: '⚖️', color: 'bg-blue-500' },

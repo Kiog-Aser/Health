@@ -23,7 +23,7 @@ import { databaseService } from '../services/database';
 import { exerciseDatabase } from '../services/exerciseDatabase';
 import { HealthCalculations } from '../utils/healthCalculations';
 import { WorkoutEntry, Exercise, ExerciseSet } from '../types';
-import AppLayout from '../../src/components/layout/AppLayout';
+import AppLayout from '../components/layout/AppLayout';
 
 interface ActiveExercise extends Exercise {
   sets: {

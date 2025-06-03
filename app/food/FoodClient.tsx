@@ -5,7 +5,7 @@ import { Plus, Camera, Search, Calendar, TrendingUp, Edit, Trash2, BarChart3 } f
 import { databaseService } from '../services/database';
 import { HealthCalculations } from '../utils/healthCalculations';
 import { FoodEntry } from '../types';
-import AppLayout from '../../src/components/layout/AppLayout';
+import AppLayout from '../components/layout/AppLayout';
 import FoodCameraModal from './FoodCameraModal';
 
 const MEAL_TYPES = [

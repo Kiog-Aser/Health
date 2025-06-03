@@ -22,12 +22,13 @@ export class HealthCalculations {
     weight: number, // kg
     height: number, // cm
     age: number,
-    gender: 'male' | 'female'
+    gender: 'male' | 'female' | 'other'
   ): number {
     // Mifflin-St Jeor Equation
     if (gender === 'male') {
       return 10 * weight + 6.25 * height - 5 * age + 5;
     } else {
+      // Use female formula for 'female' and 'other'
       return 10 * weight + 6.25 * height - 5 * age - 161;
     }
   }
@@ -101,11 +102,11 @@ export class HealthCalculations {
     weight: number,
     height: number,
     age: number,
-    gender: 'male' | 'female'
+    gender: 'male' | 'female' | 'other'
   ): number {
     // Deurenberg formula
     const bmi = this.calculateBMI(weight, height);
-    const genderFactor = gender === 'male' ? 1 : 0;
+    const genderFactor = gender === 'male' ? 1 : 0; // Use female formula for 'female' and 'other'
     
     return (1.2 * bmi) + (0.23 * age) - (10.8 * genderFactor) - 5.4;
   }

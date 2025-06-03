@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Camera, Dumbbell, Activity, Target, Calendar, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import AppLayout from '../../src/components/layout/AppLayout';
+import AppLayout from '../components/layout/AppLayout';
 
 interface DailyStats {
   date: string;
