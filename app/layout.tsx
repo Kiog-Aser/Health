@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: '🏥 HealthTracker Pro',
   description: 'Your comprehensive health and fitness tracking companion',
   manifest: '/manifest.json',
-  themeColor: '#007AFF',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

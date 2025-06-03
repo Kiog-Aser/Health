@@ -52,13 +52,13 @@ next-env.d.ts
 ehthumbs.db
 Thumbs.db
 
-# PWA
-**/public/sw.js
-**/public/workbox-*.js
-**/public/worker-*.js
-**/public/sw.js.map
-**/public/workbox-*.js.map
-**/public/worker-*.js.map
+# PWA - Commented out to allow deployment to Vercel
+# **/public/sw.js
+# **/public/workbox-*.js
+# **/public/worker-*.js
+# **/public/sw.js.map
+# **/public/workbox-*.js.map
+# **/public/worker-*.js.map
 
 # Optional npm cache directory
 .npm
