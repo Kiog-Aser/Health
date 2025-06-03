@@ -38,36 +38,37 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-base-100">
-      {/* Header - Simplified for mobile app feel */}
+      {/* Desktop Header with Full Navigation */}
       <header className="navbar bg-base-200 shadow-sm">
         <div className="navbar-start">
           <Link href="/dashboard" className="btn btn-ghost text-xl font-bold">
             🏥 HealthTracker
           </Link>
         </div>
+        
+        {/* Desktop Navigation - Center */}
+        <div className="navbar-center hidden lg:flex">
+          <ul className="menu menu-horizontal px-1 bg-base-100 rounded-box shadow-sm">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className={`flex items-center gap-2 ${
+                      item.current ? 'active bg-primary text-primary-content' : 'hover:bg-base-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.name}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        
         <div className="navbar-end">
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex">
-            <ul className="menu menu-horizontal px-1">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <li key={item.name}>
-                    <Link
-                      href={item.href}
-                      className={`flex items-center gap-2 ${
-                        item.current ? 'active' : ''
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {item.name}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          
           {/* Mobile more menu for secondary nav */}
           <div className="lg:hidden">
             <div className="dropdown dropdown-end">
@@ -91,6 +92,24 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                     </li>
                   );
                 })}
+              </ul>
+            </div>
+          </div>
+          
+          {/* Desktop user menu */}
+          <div className="hidden lg:block">
+            <div className="dropdown dropdown-end">
+              <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
+                <div className="w-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
+                  <User className="w-4 h-4" />
+                </div>
+              </div>
+              <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                <li><Link href="/profile">Profile Settings</Link></li>
+                <li><Link href="/goals">My Goals</Link></li>
+                <li><Link href="/progress">Progress Reports</Link></li>
+                <li><hr className="my-2" /></li>
+                <li><a>Sign Out</a></li>
               </ul>
             </div>
           </div>
