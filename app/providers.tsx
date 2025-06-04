@@ -1,63 +1,56 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { HealthProvider } from './context/HealthContext';
+
+type Theme = 'light' | 'dark' | 'auto';
 
 interface ThemeContextType {
-  theme: 'light' | 'dark' | 'auto';
-  setTheme: (theme: 'light' | 'dark' | 'auto') => void;
-  resolvedTheme: 'light' | 'dark';
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType>({
+  theme: 'light',
+  setTheme: () => {},
+});
 
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-}
+export const useTheme = () => useContext(ThemeContext);
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<Theme>('auto');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Load theme from localStorage
-    const savedTheme = localStorage.getItem('healthtracker-theme') as 'light' | 'dark' | 'auto' | null;
+    setMounted(true);
+    const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
       setTheme(savedTheme);
     }
   }, []);
 
   useEffect(() => {
-    // Save theme to localStorage
-    localStorage.setItem('healthtracker-theme', theme);
-
-    // Update resolved theme
+    if (!mounted) return;
+    
+    localStorage.setItem('theme', theme);
+    
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    
     if (theme === 'auto') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      setResolvedTheme(mediaQuery.matches ? 'dark' : 'light');
-
-      const handleChange = (e: MediaQueryListEvent) => {
-        setResolvedTheme(e.matches ? 'dark' : 'light');
-      };
-
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
     } else {
-      setResolvedTheme(theme);
+      root.setAttribute('data-theme', theme);
     }
-  }, [theme]);
+  }, [theme, mounted]);
 
-  useEffect(() => {
-    // Apply theme to document
-    document.documentElement.setAttribute('data-theme', resolvedTheme);
-    document.documentElement.className = resolvedTheme;
-  }, [resolvedTheme]);
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -66,7 +59,9 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
-      {children}
+      <HealthProvider>
+        {children}
+      </HealthProvider>
     </ThemeProvider>
   );
 } 

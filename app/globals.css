@@ -11,6 +11,12 @@
   --health-warning: #FF9500;
   --health-error: #FF3B30;
   --health-info: #5AC8FA;
+  
+  /* Enhanced color palette */
+  --health-gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --health-gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --health-gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --health-gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
 * {
@@ -24,6 +30,7 @@ body {
   max-width: 100vw;
   overflow-x: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -47,9 +54,9 @@ a {
   }
 }
 
-/* Custom scrollbar */
+/* Enhanced scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -57,21 +64,39 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: linear-gradient(45deg, #5a6fd8, #6a42a0);
 }
 
 /* Health-specific utilities */
 .health-card {
-  @apply bg-base-100 rounded-xl shadow-soft border border-base-300;
+  @apply bg-base-100 rounded-2xl shadow-lg border border-base-300/50 backdrop-blur-sm;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.health-card:hover {
+  @apply shadow-xl border-primary/20;
+  transform: translateY(-2px);
 }
 
 .health-gradient {
-  background: linear-gradient(135deg, var(--health-primary) 0%, var(--health-secondary) 100%);
+  background: var(--health-gradient-1);
+}
+
+.health-gradient-2 {
+  background: var(--health-gradient-2);
+}
+
+.health-gradient-3 {
+  background: var(--health-gradient-3);
+}
+
+.health-gradient-4 {
+  background: var(--health-gradient-4);
 }
 
 .metric-positive {
@@ -86,6 +111,14 @@ a {
   @apply text-base-content;
 }
 
+.shadow-soft {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
 /* PWA specific styles */
 @media (display-mode: standalone) {
   body {
@@ -94,7 +127,7 @@ a {
   }
 }
 
-/* Loading animations */
+/* Enhanced loading animations */
 .pulse-health {
   animation: pulse-health 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -109,13 +142,197 @@ a {
   }
 }
 
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.slide-up {
+  animation: slide-up 0.5s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Smooth transitions */
 .transition-health {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-bounce {
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 /* Focus styles for accessibility */
 .focus-health:focus {
   outline: 2px solid var(--health-primary);
   outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+/* Enhanced button styles */
+.btn-health {
+  @apply btn relative overflow-hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.btn-health:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.btn-health:active {
+  transform: translateY(0);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Dark theme glass */
+@media (prefers-color-scheme: dark) {
+  .glass {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Enhanced progress bars */
+.progress-health {
+  @apply w-full bg-base-200 rounded-full overflow-hidden;
+  height: 8px;
+}
+
+.progress-health-fill {
+  @apply h-full rounded-full transition-all duration-500 ease-out;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Enhanced input styles */
+.input-health {
+  @apply input input-bordered focus:input-primary transition-all duration-300;
+}
+
+.input-health:focus {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Enhanced card hover effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-success {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enhanced notification styles */
+.notification-slide {
+  animation: notification-slide 0.5s ease-out;
+}
+
+@keyframes notification-slide {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Loading spinner enhancement */
+.loading-health {
+  @apply loading loading-spinner;
+  color: var(--health-primary);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .health-card {
+    @apply rounded-xl;
+  }
+  
+  .btn-health {
+    @apply btn-sm;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .health-card {
+    @apply border-2 border-base-content;
+  }
+  
+  .btn-health {
+    @apply border-2 border-base-content;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-health,
+  .float-animation,
+  .slide-up,
+  .fade-in {
+    animation: none;
+  }
+  
+  .transition-health,
+  .transition-bounce {
+    transition: none;
+  }
 } 
