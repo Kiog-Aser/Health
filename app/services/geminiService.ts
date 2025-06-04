@@ -48,6 +48,10 @@ class GeminiService {
    */
   async analyzeFoodImage(imageFile: File): Promise<FoodAnalysisResult | null> {
     try {
+      if (!this.isConfigured()) {
+        throw new Error('Gemini API key not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your environment.');
+      }
+
       const base64Data = await this.fileToBase64(imageFile);
       
       const prompt = `
@@ -78,28 +82,29 @@ class GeminiService {
         Only respond with valid JSON, no other text.
       `;
 
+      // Generate content with text and image using the new API
       const response = await this.ai.models.generateContent({
-        model: 'gemini-2.0-flash-001',
+        model: "gemini-1.5-flash",
         contents: [
           {
             parts: [
               { text: prompt },
               {
                 inlineData: {
-                  mimeType: imageFile.type,
                   data: base64Data,
-                }
-              }
-            ]
-          }
-        ]
+                  mimeType: imageFile.type,
+                },
+              },
+            ],
+          },
+        ],
       });
 
-      const responseText = response.text;
-      if (!responseText) {
-        throw new Error('No response text received from Gemini');
+      if (!response || !response.text) {
+        throw new Error('No response received from Gemini');
       }
-      
+
+      const responseText = response.text;
       console.log('Gemini response:', responseText);
 
       // Clean the response to extract JSON
@@ -118,17 +123,31 @@ class GeminiService {
       return {
         name: result.name,
         calories: Math.round(result.calories),
-        protein: Math.round(result.protein * 10) / 10,
-        carbs: Math.round(result.carbs * 10) / 10,
-        fat: Math.round(result.fat * 10) / 10,
-        fiber: Math.round(result.fiber * 10) / 10,
-        sugar: Math.round(result.sugar * 10) / 10,
-        sodium: Math.round(result.sodium),
-        confidence: Math.min(1, Math.max(0, result.confidence)),
-        analysis: result.analysis
+        protein: Math.round((result.protein || 0) * 10) / 10,
+        carbs: Math.round((result.carbs || 0) * 10) / 10,
+        fat: Math.round((result.fat || 0) * 10) / 10,
+        fiber: Math.round((result.fiber || 0) * 10) / 10,
+        sugar: Math.round((result.sugar || 0) * 10) / 10,
+        sodium: Math.round(result.sodium || 0),
+        confidence: Math.min(1, Math.max(0, result.confidence || 0.5)),
+        analysis: result.analysis || 'Food analysis completed'
       };
     } catch (error) {
       console.error('Failed to analyze food image:', error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('API key') || error.message.includes('key')) {
+          console.error('API Key Error: Please ensure NEXT_PUBLIC_GEMINI_API_KEY is set correctly');
+        } else if (error.message.includes('quota') || error.message.includes('limit')) {
+          console.error('API Quota Error: You may have exceeded your API quota');
+        } else if (error.message.includes('permission') || error.message.includes('authentication')) {
+          console.error('Authentication Error: Please check your API key permissions');
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          console.error('Network Error: Please check your internet connection');
+        }
+      }
+      
       return null;
     }
   }
@@ -137,7 +156,28 @@ class GeminiService {
    * Check if the service is properly configured
    */
   isConfigured(): boolean {
-    return GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE' && GEMINI_API_KEY.length > 0;
+    return GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE' && GEMINI_API_KEY.length > 10;
+  }
+
+  /**
+   * Test the API connection
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      if (!this.isConfigured()) {
+        return false;
+      }
+
+      const response = await this.ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: "Hello, this is a test.",
+      });
+      
+      return !!(response && response.text);
+    } catch (error) {
+      console.error('Gemini API test failed:', error);
+      return false;
+    }
   }
 }
 

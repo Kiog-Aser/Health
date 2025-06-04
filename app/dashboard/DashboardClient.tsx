@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Camera, Dumbbell, Activity, Target, Calendar, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '../components/layout/AppLayout';
+import TestGeminiConnection from '../components/TestGeminiConnection';
+import CameraDiagnostic from '../components/CameraDiagnostic';
 
 interface DailyStats {
   date: string;
@@ -279,6 +281,10 @@ export default function DashboardClient() {
             ))}
           </div>
         </div>
+
+        <TestGeminiConnection />
+
+        <CameraDiagnostic />
       </div>
     </AppLayout>
   );
