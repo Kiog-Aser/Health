@@ -8,10 +8,9 @@ import {
   Apple, 
   Dumbbell, 
   TrendingUp, 
-  Target, 
-  Activity, 
-  User,
-  MoreHorizontal
+  Settings,
+  MoreHorizontal,
+  User
 } from 'lucide-react';
 import QuickCalorieWidget from '../ui/QuickCalorieWidget';
 
@@ -28,9 +27,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
     { name: 'Food', href: '/food', icon: Apple, current: pathname === '/food' },
     { name: 'Workouts', href: '/workout', icon: Dumbbell, current: pathname === '/workout' },
     { name: 'Progress', href: '/progress', icon: TrendingUp, current: pathname === '/progress' },
-    { name: 'Goals', href: '/goals', icon: Target, current: pathname === '/goals' },
-    { name: 'Biomarkers', href: '/biomarkers', icon: Activity, current: pathname === '/biomarkers' },
-    { name: 'Profile', href: '/profile', icon: User, current: pathname === '/profile' },
+    { name: 'Settings', href: '/settings', icon: Settings, current: pathname === '/settings' || pathname === '/goals' || pathname === '/biomarkers' || pathname === '/profile' },
   ];
 
   // Primary navigation for bottom nav (most important 4 + more)
@@ -113,8 +110,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                 </div>
               </div>
               <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300/50">
-                <li><Link href="/profile">Profile Settings</Link></li>
-                <li><Link href="/goals">My Goals</Link></li>
+                <li><Link href="/settings">Profile & Settings</Link></li>
                 <li><Link href="/progress">Progress Reports</Link></li>
                 <li><hr className="my-2" /></li>
                 <li><a>Sign Out</a></li>

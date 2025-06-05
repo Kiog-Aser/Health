@@ -1,5 +1,5 @@
-import BiomarkersClient from './BiomarkersClient';
+import { redirect } from 'next/navigation';
 
 export default function BiomarkersPage() {
-  return <BiomarkersClient />;
+  redirect('/settings?tab=biomarkers');
 } 

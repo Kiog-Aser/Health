@@ -1,5 +1,5 @@
-import GoalsClient from './GoalsClient';
+import { redirect } from 'next/navigation';
 
 export default function GoalsPage() {
-  return <GoalsClient />;
+  redirect('/settings?tab=goals');
 } 
