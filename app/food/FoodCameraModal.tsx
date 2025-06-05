@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, X, RotateCcw, Zap, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Camera, X, RotateCcw, RefreshCw, Zap, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { FoodEntry } from '../types';
 import { geminiService } from '../services/geminiService';
 import { databaseService } from '../services/database';
-import { FoodEntry } from '../types';
+import FoodAnalysisModal from '../components/ui/FoodAnalysisModal';
 
 interface FoodCameraModalProps {
   isOpen: boolean;
@@ -21,26 +22,12 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
   const [permissionStatus, setPermissionStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [apiStatus, setApiStatus] = useState<'pending' | 'configured' | 'not-configured'>('pending');
   const [videoReady, setVideoReady] = useState(false);
-  const [videoState, setVideoState] = useState('');
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<File | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Monitor video state for debugging
-  const monitorVideoState = () => {
-    if (videoRef.current) {
-      const video = videoRef.current;
-      const state = `ReadyState: ${video.readyState}, Paused: ${video.paused}, CurrentTime: ${video.currentTime.toFixed(2)}, Duration: ${video.duration || 'N/A'}, Width: ${video.videoWidth}, Height: ${video.videoHeight}`;
-      setVideoState(state);
-      console.log('📊 Video State:', state);
-      
-      // Auto-set ready if we have dimensions and reasonable ready state
-      if (!videoReady && video.videoWidth > 0 && video.videoHeight > 0 && video.readyState >= 2) {
-        console.log('🎯 Auto-detecting video ready state');
-        setVideoReady(true);
-      }
-    }
-  };
 
   // Check API configuration and initialize camera when modal opens
   useEffect(() => {
@@ -51,10 +38,6 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
       setTimeout(() => {
         initializeCamera();
       }, 200);
-      
-      // Start monitoring video state
-      const interval = setInterval(monitorVideoState, 1000);
-      return () => clearInterval(interval);
     } else {
       cleanup();
     }
@@ -77,6 +60,9 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
     setVideoReady(false);
     setPermissionStatus('pending');
     setError('');
+    setAnalysisResult(null);
+    setShowAnalysisModal(false);
+    setCapturedImage(null);
   };
 
   const checkApiConfiguration = async () => {
@@ -118,10 +104,11 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
 
       console.log('🚀 Starting camera initialization with facing mode:', facingMode);
       
-      // Include facing mode constraint since that's when it works
       const constraints = {
         video: {
-          facingMode: facingMode
+          facingMode: facingMode,
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
         }
       };
 
@@ -129,7 +116,6 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       
       console.log('✅ Got camera stream:', newStream);
-      console.log('Video tracks:', newStream.getVideoTracks());
 
       setStream(newStream);
       setPermissionStatus('granted');
@@ -139,57 +125,44 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
         if (videoRef.current && newStream) {
           const video = videoRef.current;
           
-          console.log('🎥 Setting up video element (delayed assignment)...');
+          console.log('🎥 Setting up video element...');
+          video.srcObject = newStream;
+          video.load();
           
-          // Clear any existing source first
-          video.srcObject = null;
-          
-          // Assign the stream after a brief delay
-          setTimeout(() => {
-            console.log('🔗 Assigning stream to video element...');
-            video.srcObject = newStream;
-            video.load();
-            
-            // Event handler for metadata
-            video.onloadedmetadata = () => {
-              console.log('✅ Video metadata loaded!', {
-                width: video.videoWidth,
-                height: video.videoHeight,
-                readyState: video.readyState
-              });
-              setVideoReady(true);
-            };
-            
-            // Try to play
-            video.play().then(() => {
-              console.log('✅ Video playing automatically!');
-              setVideoReady(true);
-            }).catch(err => {
-              console.log('⚠️ Autoplay failed:', err);
-              setVideoReady(true); // Still set ready since video works
+          // Event handlers
+          video.onloadedmetadata = () => {
+            console.log('✅ Video metadata loaded!', {
+              width: video.videoWidth,
+              height: video.videoHeight,
+              readyState: video.readyState
             });
-          }, 50);
+            setVideoReady(true);
+          };
+          
+          // Try to play
+          video.play().then(() => {
+            console.log('✅ Video playing automatically!');
+            setVideoReady(true);
+          }).catch(err => {
+            console.log('⚠️ Autoplay failed:', err);
+            setVideoReady(true); // Still set ready since video works
+          });
         }
       }, 100);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Camera access failed:', err);
       setPermissionStatus('denied');
       
-      if (err instanceof Error) {
-        if (err.name === 'NotAllowedError') {
-          setError('Camera access denied. Please allow camera permissions and try again.');
-        } else if (err.name === 'NotFoundError') {
-          setError('No camera found. Please ensure your device has a camera.');
-        } else if (err.name === 'OverconstrainedError') {
-          // Try without facing mode constraint
-          console.log('🔄 Retrying without facing mode constraint...');
-          setTimeout(() => tryBasicCamera(), 500);
-        } else {
-          setError(`Camera error: ${err.message}`);
-        }
+      if (err.name === 'NotAllowedError') {
+        setError('Camera access denied. Please allow camera permissions and try again.');
+      } else if (err.name === 'NotFoundError') {
+        setError('No camera found. Please ensure your device has a camera.');
+      } else if (err.name === 'OverconstrainedError') {
+        console.log('🔄 Retrying without facing mode constraint...');
+        setTimeout(() => tryBasicCamera(), 500);
       } else {
-        setError('Unknown error accessing camera.');
+        setError(`Camera error: ${err.message}`);
       }
     }
   };
@@ -199,7 +172,10 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
       console.log('🔄 Trying basic camera without facing mode...');
       
       const basicConstraints = {
-        video: true
+        video: {
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
+        }
       };
 
       const newStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
@@ -302,6 +278,9 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
       
       console.log('Image captured successfully, size:', imageFile.size);
       
+      // Store the captured image
+      setCapturedImage(imageFile);
+      
       // Analyze the image
       await analyzeFood(imageFile);
 
@@ -321,33 +300,9 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
       const analysisResult = await geminiService.analyzeFoodImage(imageFile);
 
       if (analysisResult) {
-        // Create the food entry
-        const foodEntry: FoodEntry = {
-          id: Date.now().toString(),
-          name: analysisResult.name,
-          calories: analysisResult.calories,
-          protein: analysisResult.protein,
-          carbs: analysisResult.carbs,
-          fat: analysisResult.fat,
-          fiber: analysisResult.fiber,
-          sugar: analysisResult.sugar,
-          sodium: analysisResult.sodium,
-          timestamp: Date.now(),
-          mealType: 'snack',
-          confidence: analysisResult.confidence,
-          aiAnalysis: analysisResult.analysis,
-        };
-
-        // Save to database
-        await databaseService.addFoodEntry(foodEntry);
-
-        // Notify parent component
-        onFoodAdded(foodEntry);
-
-        // Show success message and close modal
-        alert(`Food analyzed successfully!\n\nFound: ${analysisResult.name}\nCalories: ${analysisResult.calories}\nConfidence: ${Math.round(analysisResult.confidence * 100)}%`);
-        onClose();
-
+        // Show detailed analysis modal
+        setAnalysisResult(analysisResult);
+        setShowAnalysisModal(true);
       } else {
         setError('Unable to analyze the food. The AI couldn\'t identify the food in the image. Please try again with a clearer photo or add the food manually.');
       }
@@ -359,252 +314,232 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
     }
   };
 
+  const handleAnalysisConfirm = async (foodEntry: FoodEntry) => {
+    try {
+      await databaseService.addFoodEntry(foodEntry);
+      onFoodAdded(foodEntry);
+      setShowAnalysisModal(false);
+      onClose();
+    } catch (error) {
+      console.error('Failed to save food entry:', error);
+      setError('Failed to save food entry. Please try again.');
+    }
+  };
+
+  const handleAnalysisClose = () => {
+    setShowAnalysisModal(false);
+    setAnalysisResult(null);
+    setCapturedImage(null);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
-      <div className="bg-base-100 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-base-300">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">Scan Food with AI</h2>
-            {apiStatus === 'configured' && (
-              <div className="flex items-center gap-1 text-success text-sm">
-                <CheckCircle className="w-4 h-4" />
-                <span>AI Ready</span>
+    <>
+      <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-2">
+        <div className="bg-base-100 rounded-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-base-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Camera className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">AI Food Scanner</h2>
+                <p className="text-sm text-base-content/60">Capture and analyze food with AI</p>
+              </div>
+              {apiStatus === 'configured' && (
+                <div className="flex items-center gap-1 text-success text-sm">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">AI Ready</span>
+                </div>
+              )}
+              {apiStatus === 'not-configured' && (
+                <div className="flex items-center gap-1 text-warning text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Setup Required</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="btn btn-ghost btn-sm btn-circle"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-4 flex flex-col h-[calc(95vh-5rem)] overflow-hidden">
+            {/* API Configuration Status */}
+            {apiStatus === 'not-configured' && (
+              <div className="mb-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-warning mb-1">AI Service Setup Required</h3>
+                    <p className="text-sm text-base-content/80 mb-2">
+                      Configure your Gemini API key to enable AI food scanning.
+                    </p>
+                    <div className="text-xs text-base-content/70">
+                      Add NEXT_PUBLIC_GEMINI_API_KEY to your environment and restart the server.
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-            {apiStatus === 'not-configured' && (
-              <div className="flex items-center gap-1 text-warning text-sm">
-                <AlertCircle className="w-4 h-4" />
-                <span>Setup Required</span>
+
+            {permissionStatus === 'pending' && (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-center">Requesting camera access...</p>
+                <p className="text-sm text-base-content/60 text-center">
+                  Please allow camera permissions when prompted
+                </p>
+              </div>
+            )}
+
+            {permissionStatus === 'denied' && (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                <Camera className="w-12 h-12 text-error" />
+                <div className="text-center">
+                  <p className="font-semibold text-error mb-2">Camera Access Required</p>
+                  <p className="text-sm text-base-content/60 mb-4">
+                    We need access to your camera to scan and analyze food items with AI
+                  </p>
+                  <button
+                    onClick={initializeCamera}
+                    className="btn btn-primary"
+                  >
+                    Grant Camera Access
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {permissionStatus === 'granted' && (
+              <div className="flex-1 flex flex-col space-y-4">
+                {/* Instructions */}
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <p className="text-sm text-center">
+                    <Zap className="w-4 h-4 inline mr-2" />
+                    Point camera at food and tap capture - AI will analyze nutrition automatically
+                  </p>
+                </div>
+
+                {/* Camera Status */}
+                {!videoReady && stream && (
+                  <div className="bg-info/10 p-3 rounded-lg text-center">
+                    <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                    <span className="text-sm">Initializing camera...</span>
+                  </div>
+                )}
+
+                {/* Video Container */}
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-video flex-1">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    controls={false}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Loading overlay */}
+                  {!videoReady && stream && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75">
+                      <div className="text-center text-white">
+                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                        <p>Starting camera...</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Viewfinder when ready */}
+                  {videoReady && !isAnalyzing && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-48 h-48 border-2 border-white border-dashed rounded-lg opacity-50"></div>
+                    </div>
+                  )}
+
+                  {/* Analyzing overlay */}
+                  {isAnalyzing && (
+                    <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                        <p>Analyzing food with AI...</p>
+                        <p className="text-sm opacity-70 mt-1">This may take a few seconds</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center justify-center space-x-4">
+                  <button
+                    onClick={toggleCamera}
+                    className="btn btn-ghost btn-circle"
+                    disabled={isCapturing || isAnalyzing || !videoReady}
+                    title="Switch camera"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    onClick={capturePhoto}
+                    disabled={isCapturing || isAnalyzing || apiStatus !== 'configured' || !videoReady}
+                    className="btn btn-primary btn-circle btn-lg"
+                    title={
+                      !videoReady ? 'Camera not ready' :
+                      apiStatus !== 'configured' ? 'AI service not configured' : 
+                      'Capture and analyze food'
+                    }
+                  >
+                    {isCapturing || isAnalyzing ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Camera className="w-6 h-6" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      console.log('🔄 Restarting camera...');
+                      initializeCamera();
+                    }}
+                    className="btn btn-ghost btn-circle"
+                    disabled={isCapturing || isAnalyzing}
+                    title="Restart camera"
+                  >
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Error message */}
+                {error && (
+                  <div className="alert alert-error">
+                    <AlertCircle className="w-5 h-5" />
+                    <p className="text-sm">{error}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="btn btn-ghost btn-sm btn-circle"
-          >
-            <X className="w-4 h-4" />
-          </button>
+
+          {/* Hidden canvas for photo capture */}
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
         </div>
-
-        {/* Content */}
-        <div className="p-4">
-          {/* API Configuration Status */}
-          {apiStatus === 'not-configured' && (
-            <div className="mb-4 p-4 bg-warning/10 border border-warning/20 rounded-lg">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-warning mb-1">AI Service Setup Required</h3>
-                  <p className="text-sm text-base-content/80 mb-2">
-                    To use AI food scanning, you need to configure your Gemini API key.
-                  </p>
-                  <ol className="text-sm text-base-content/80 list-decimal list-inside space-y-1">
-                    <li>Get a free API key from <a href="https://ai.google.dev/gemini-api/docs/api-key" target="_blank" rel="noopener noreferrer" className="link link-primary">Google AI Studio</a></li>
-                    <li>Create a file named <code className="bg-base-200 px-1 rounded">.env.local</code> in your project root</li>
-                    <li>Add: <code className="bg-base-200 px-1 rounded">NEXT_PUBLIC_GEMINI_API_KEY=your_api_key_here</code></li>
-                    <li>Restart the development server</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {permissionStatus === 'pending' && (
-            <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p>Requesting camera access...</p>
-            </div>
-          )}
-
-          {permissionStatus === 'denied' && (
-            <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Camera className="w-12 h-12 text-error" />
-              <div className="text-center">
-                <p className="font-semibold text-error mb-2">Camera Access Required</p>
-                <p className="text-sm text-base-content/60 mb-4">
-                  We need access to your camera to scan and analyze food items with AI
-                </p>
-                <button
-                  onClick={initializeCamera}
-                  className="btn btn-primary"
-                >
-                  Grant Camera Access
-                </button>
-              </div>
-            </div>
-          )}
-
-          {permissionStatus === 'granted' && (
-            <div className="space-y-4">
-              {/* Instructions */}
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <p className="text-sm text-center">
-                  <Zap className="w-4 h-4 inline mr-2" />
-                  Point camera at food and tap capture - AI will analyze nutrition automatically
-                </p>
-              </div>
-
-              {/* Camera Status */}
-              {!videoReady && stream && (
-                <div className="bg-info/10 p-3 rounded-lg text-center">
-                  <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                  <span className="text-sm">Initializing camera...</span>
-                </div>
-              )}
-
-              {/* Video Container */}
-              <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  controls={false}
-                  className="w-full h-full object-cover"
-                />
-                
-                {/* Simple loading overlay */}
-                {!videoReady && stream && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75">
-                    <div className="text-center text-white">
-                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-                      <p>Starting camera...</p>
-                      <button
-                        onClick={() => {
-                          if (videoRef.current) {
-                            console.log('🔄 Manual play attempt');
-                            const video = videoRef.current;
-                            video.play().then(() => {
-                              console.log('✅ Manual play worked!');
-                              setVideoReady(true);
-                            }).catch(error => {
-                              console.error('❌ Manual play failed:', error);
-                              // Force ready state anyway
-                              setVideoReady(true);
-                            });
-                          }
-                        }}
-                        className="btn btn-sm btn-primary mt-3"
-                      >
-                        ▶ Start Video
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Simple viewfinder when ready */}
-                {videoReady && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-48 h-48 border-2 border-white border-dashed rounded-lg opacity-50"></div>
-                  </div>
-                )}
-
-                {/* Analyzing overlay */}
-                {isAnalyzing && (
-                  <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-                      <p>Analyzing food with AI...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center justify-center space-x-4">
-                <button
-                  onClick={toggleCamera}
-                  className="btn btn-ghost btn-circle"
-                  disabled={isCapturing || isAnalyzing || !videoReady}
-                  title="Switch camera"
-                >
-                  <RotateCcw className="w-5 h-5" />
-                </button>
-
-                <button
-                  onClick={capturePhoto}
-                  disabled={isCapturing || isAnalyzing || apiStatus !== 'configured' || !videoReady}
-                  className="btn btn-primary btn-circle btn-lg"
-                  title={
-                    !videoReady ? 'Camera not ready' :
-                    apiStatus !== 'configured' ? 'AI service not configured' : 
-                    'Capture and analyze food'
-                  }
-                >
-                  {isCapturing || isAnalyzing ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <Camera className="w-6 h-6" />
-                  )}
-                </button>
-
-                <button
-                  onClick={() => {
-                    console.log('🔄 Restarting camera...');
-                    initializeCamera();
-                  }}
-                  className="btn btn-ghost btn-circle"
-                  disabled={isCapturing || isAnalyzing}
-                  title="Restart camera"
-                >
-                  <RefreshCw className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Debug info (only in development) */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="text-xs text-base-content/40 bg-base-200 p-2 rounded">
-                  <div>Status: {permissionStatus} | Video Ready: {videoReady ? 'Yes' : 'No'} | 
-                  Stream: {stream ? 'Active' : 'None'} | API: {apiStatus}</div>
-                  {videoState && <div className="mt-1">Video: {videoState}</div>}
-                  
-                  {stream && videoRef.current && (
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => {
-                          const video = videoRef.current!;
-                          console.log('🔧 Debug: Direct stream assignment');
-                          video.srcObject = stream;
-                          video.load();
-                          setTimeout(() => {
-                            video.play().then(() => setVideoReady(true)).catch(console.error);
-                          }, 100);
-                        }}
-                        className="btn btn-xs btn-secondary"
-                      >
-                        Force Stream
-                      </button>
-                      <button
-                        onClick={() => {
-                          console.log('🔧 Debug: Force ready state');
-                          setVideoReady(true);
-                        }}
-                        className="btn btn-xs btn-accent"
-                      >
-                        Force Ready
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Error message */}
-              {error && (
-                <div className="alert alert-error">
-                  <AlertCircle className="w-5 h-5" />
-                  <p className="text-sm">{error}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Hidden canvas for photo capture */}
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
-    </div>
+
+      {/* Analysis Result Modal */}
+      <FoodAnalysisModal
+        isOpen={showAnalysisModal}
+        onClose={handleAnalysisClose}
+        onConfirm={handleAnalysisConfirm}
+        analysisResult={analysisResult}
+        capturedImage={capturedImage || undefined}
+      />
+    </>
   );
 } 

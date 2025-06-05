@@ -303,11 +303,169 @@ a {
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .health-card {
-    @apply rounded-xl;
+    @apply rounded-xl shadow-md border-0;
+    margin: 0.5rem;
   }
   
   .btn-health {
     @apply btn-sm;
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+  }
+
+  /* Better touch targets */
+  .btn {
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+  }
+
+  /* Improved spacing for mobile */
+  .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem;
+  }
+
+  .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+  }
+
+  /* Mobile-friendly modals */
+  .modal-box {
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100vh - 2rem);
+    margin: 0.5rem;
+  }
+
+  /* Better mobile tables */
+  .table {
+    font-size: 0.875rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.5rem 0.25rem;
+  }
+
+  /* Mobile camera containers */
+  .aspect-video {
+    max-height: 50vh;
+  }
+
+  /* Responsive text sizes */
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  /* Better mobile form inputs */
+  .input, .select, .textarea {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  /* Mobile-optimized progress rings */
+  .radial-progress {
+    width: 6rem;
+    height: 6rem;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  .health-card {
+    margin: 0.25rem;
+    padding: 1rem;
+  }
+
+  .btn {
+    min-height: 2.5rem;
+    font-size: 0.875rem;
+  }
+
+  .modal-box {
+    max-width: calc(100vw - 0.5rem);
+    margin: 0.25rem;
+  }
+
+  /* Ultra-compact spacing */
+  .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+  }
+
+  .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem;
+  }
+
+  /* Smaller text on very small screens */
+  .text-3xl {
+    font-size: 1.5rem;
+  }
+
+  .text-2xl {
+    font-size: 1.25rem;
+  }
+
+  .text-xl {
+    font-size: 1.125rem;
+  }
+}
+
+/* Landscape mobile optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+  .aspect-video {
+    max-height: 40vh;
+  }
+
+  .modal-box {
+    max-height: calc(100vh - 1rem);
+  }
+
+  .health-card {
+    margin: 0.25rem;
+  }
+}
+
+/* Touch-friendly enhancements */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .btn-circle {
+    width: 3rem;
+    height: 3rem;
+    min-height: 3rem;
+  }
+
+  .btn-sm.btn-circle {
+    width: 2.5rem;
+    height: 2.5rem;
+    min-height: 2.5rem;
+  }
+
+  /* Better tap feedback */
+  .btn:active {
+    transform: scale(0.98);
+  }
+
+  .health-card:active {
+    transform: scale(0.995);
+  }
+
+  /* Remove hover effects on touch devices */
+  .health-card:hover {
+    transform: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  .btn-health:hover {
+    transform: none;
+  }
+
+  .card-hover:hover {
+    transform: none;
   }
 }
 
