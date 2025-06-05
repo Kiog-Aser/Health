@@ -7,8 +7,11 @@ A comprehensive health and fitness tracking web application built with Next.js, 
 - **📊 Dashboard**: Comprehensive health overview with daily stats, weekly charts, and AI insights
 - **🍎 Food Tracking**: Log meals, track calories and macronutrients with AI-powered food scanning
 - **🤖 AI Food Scanning**: Use your camera to scan food and get instant nutritional analysis
+- **📋 Weekly Check-ins**: Easy progress tracking with weight and measurements
+- **🧠 AI Health Assistant**: Get instant answers to health questions with evidence-based information
 - **💪 Workout Tracking**: Record exercises, sessions, and fitness progress
 - **📈 Progress Analytics**: Visualize health trends and goal achievements
+- **🔐 User-Controlled API Keys**: Use your own Gemini API key for privacy and control
 - **👤 User Profile**: Manage personal information and app preferences
 - **🌙 Dark/Light Theme**: Automatic theme switching with manual override
 - **📱 PWA Support**: Install as a native-like app on any device
@@ -33,16 +36,13 @@ A comprehensive health and fitness tracking web application built with Next.js, 
    npm install
    ```
 
-2. **Configure AI Food Scanning** (Optional but recommended):
-   ```bash
-   # Create environment file
-   cp .env.example .env.local
+2. **Configure AI Features** (Required for AI features):
+   Since this is an open-source app, users must provide their own API keys for privacy and cost control.
    
-   # Add your Gemini API key to .env.local
-   NEXT_PUBLIC_GEMINI_API_KEY=your_actual_api_key_here
-   ```
-   
-   Get your free API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Get your free API key from [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key)
+   - Go to Settings → Preferences in the app
+   - Add your Gemini API key in the API Keys section
+   - Save your settings
 
 3. **Run development server**:
    ```bash
@@ -80,14 +80,57 @@ The app features advanced AI-powered food recognition using Google's Gemini 2.0 
 6. AI analyzes and adds nutrition data automatically
 
 ### Setup:
-1. Get a free API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Add it to your `.env.local` file:
-   ```
-   NEXT_PUBLIC_GEMINI_API_KEY=your_api_key_here
-   ```
-3. Restart your development server
+1. Get a free API key from [Google AI Studio](https://ai.google.dev/gemini-api/docs/api-key)
+2. Open the HealthTracker Pro app
+3. Go to Settings → Preferences
+4. Add your API key in the "API Keys" section
+5. Save your settings
+
+The API key is stored locally for privacy and gives you full control over usage and costs.
 
 **Note**: The feature works entirely in the browser and requires an internet connection for AI analysis.
+
+## 🧠 AI Health Assistant
+
+Get instant, evidence-based answers to your health questions:
+
+### Features:
+- **🤖 Intelligent Chat**: Natural conversation about health topics
+- **📚 Evidence-Based**: Responses based on established scientific knowledge
+- **🏥 Safety First**: Always includes appropriate medical disclaimers
+- **📝 Categorized**: Automatically categorizes questions (nutrition, exercise, wellness, research)
+- **⚡ Quick Questions**: Pre-set common health questions to get started
+- **🔒 Privacy**: All conversations happen in your browser
+
+### Topics Covered:
+- **🍎 Nutrition**: Diet advice, food science, meal planning
+- **💪 Exercise**: Workout tips, fitness science, training advice  
+- **🧘 Wellness**: Sleep, stress management, lifestyle tips
+- **🔬 Research**: Help interpreting health studies and research
+- **❓ General**: Broad health questions and information
+
+### Important Notes:
+- This provides general health information only
+- Always consult healthcare professionals for personal medical advice
+- Responses are educational and not medical diagnoses
+
+## 📋 Weekly Progress Tracking
+
+Simplified progress tracking with smart insights:
+
+### Features:
+- **⚖️ Easy Check-ins**: Quick weight and measurement entry
+- **📊 Progress Comparison**: Automatic comparison with previous weeks
+- **📈 Trend Analysis**: Visual indicators for improvements
+- **📝 Notes**: Add observations about your progress
+- **🎯 Goal Integration**: Progress automatically updates your goals
+
+### Measurements Supported:
+- Weight (required)
+- Body fat percentage (optional)
+- Muscle mass (optional)
+- Waist circumference (optional)
+- Custom notes and observations
 
 ## 🎨 Customization
 

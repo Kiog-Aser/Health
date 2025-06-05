@@ -16,9 +16,10 @@ export default function TestGeminiConnection() {
 
     try {
       // Check if configured
-      if (!geminiService.isConfigured()) {
+      const isConfigured = await geminiService.isConfigured();
+      if (!isConfigured) {
         setResult('not-configured');
-        setError('Gemini API key is not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your .env.local file.');
+        setError('Gemini API key is not configured. Please add your API key in Settings.');
         return;
       }
 
@@ -115,9 +116,9 @@ export default function TestGeminiConnection() {
                   <p className="text-xs text-base-content/60 mb-2">Quick setup:</p>
                   <ol className="text-xs text-base-content/60 list-decimal list-inside space-y-1">
                     <li>Get API key from <a href="https://ai.google.dev/gemini-api/docs/api-key" target="_blank" rel="noopener noreferrer" className="link link-primary">Google AI Studio</a></li>
-                    <li>Create <code className="bg-base-200 px-1 rounded">.env.local</code> file</li>
-                    <li>Add: <code className="bg-base-200 px-1 rounded">NEXT_PUBLIC_GEMINI_API_KEY=your_key</code></li>
-                    <li>Restart the development server</li>
+                    <li>Go to Settings → Preferences</li>
+                    <li>Add your Gemini API key in the API Keys section</li>
+                    <li>Save your settings</li>
                   </ol>
                 </div>
               )}

@@ -117,6 +117,9 @@ export interface UserPreferences {
     dataSharing: boolean;
     analytics: boolean;
   };
+  apiKeys: {
+    geminiApiKey?: string;
+  };
 }
 
 export interface DailyStats {

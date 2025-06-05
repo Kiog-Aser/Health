@@ -26,7 +26,8 @@ import {
   Palette,
   CheckCircle,
   AlertTriangle,
-  Calendar
+  Calendar,
+  Key
 } from 'lucide-react';
 import { databaseService } from '../services/database';
 import { HealthCalculations } from '../utils/healthCalculations';
@@ -93,6 +94,9 @@ export default function SettingsClient() {
     notes: '',
   });
 
+  // API Keys state
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+
   useEffect(() => {
     loadAllData();
   }, []);
@@ -117,6 +121,7 @@ export default function SettingsClient() {
           height: userProfile.height,
           activityLevel: userProfile.activityLevel,
         });
+        setGeminiApiKey(userProfile.preferences?.apiKeys?.geminiApiKey || '');
       } else {
         // Create default profile
         const defaultProfile: UserProfile = {
@@ -139,6 +144,9 @@ export default function SettingsClient() {
               dataSharing: false,
               analytics: true,
             },
+            apiKeys: {
+              geminiApiKey: '',
+            },
           },
           createdAt: Date.now(),
         };
@@ -150,6 +158,7 @@ export default function SettingsClient() {
           height: defaultProfile.height,
           activityLevel: defaultProfile.activityLevel,
         });
+        setGeminiApiKey('');
       }
 
       setGoals(goalsData);
@@ -184,6 +193,34 @@ export default function SettingsClient() {
     } catch (error) {
       console.error('Failed to save profile:', error);
       showError('Failed to save profile', 'Please try again');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!profile) return;
+
+    try {
+      setIsSaving(true);
+      
+      const updatedProfile: UserProfile = {
+        ...profile,
+        preferences: {
+          ...profile.preferences,
+          apiKeys: {
+            ...profile.preferences.apiKeys,
+            geminiApiKey: geminiApiKey,
+          },
+        },
+      };
+
+      await databaseService.saveUserProfile(updatedProfile);
+      setProfile(updatedProfile);
+      showSuccess('API key saved successfully');
+    } catch (error) {
+      console.error('Failed to save API key:', error);
+      showError('Failed to save API key', 'Please try again');
     } finally {
       setIsSaving(false);
     }
@@ -698,6 +735,52 @@ export default function SettingsClient() {
         {/* Preferences Tab */}
         {activeTab === 'preferences' && profile && (
           <div className="space-y-6">
+            {/* API Keys */}
+            <div className="health-card">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Key className="w-5 h-5 text-primary" />
+                API Keys
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="label">
+                    <span className="label-text">Gemini API Key</span>
+                    <span className="label-text-alt">
+                      <a 
+                        href="https://ai.google.dev/gemini-api/docs/api-key" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="link link-primary text-xs"
+                      >
+                        Get your API key
+                      </a>
+                    </span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      className="input input-bordered flex-1"
+                      value={geminiApiKey}
+                      onChange={(e) => setGeminiApiKey(e.target.value)}
+                      placeholder="Enter your Gemini API key"
+                    />
+                    <button
+                      onClick={handleSaveApiKey}
+                      disabled={isSaving}
+                      className="btn btn-primary"
+                    >
+                      {isSaving ? <span className="loading loading-spinner loading-sm"></span> : <Save className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="label">
+                    <span className="label-text-alt">
+                      Your API key is stored locally and used for AI-powered food scanning.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Notifications */}
             <div className="health-card">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">

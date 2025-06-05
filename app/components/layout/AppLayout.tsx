@@ -10,7 +10,8 @@ import {
   TrendingUp, 
   Settings,
   MoreHorizontal,
-  User
+  User,
+  Brain
 } from 'lucide-react';
 import QuickCalorieWidget from '../ui/QuickCalorieWidget';
 
@@ -27,6 +28,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
     { name: 'Food', href: '/food', icon: Apple, current: pathname === '/food' },
     { name: 'Workouts', href: '/workout', icon: Dumbbell, current: pathname === '/workout' },
     { name: 'Progress', href: '/progress', icon: TrendingUp, current: pathname === '/progress' },
+    { name: 'Health AI', href: '/health-ai', icon: Brain, current: pathname === '/health-ai' },
     { name: 'Settings', href: '/settings', icon: Settings, current: pathname === '/settings' || pathname === '/goals' || pathname === '/biomarkers' || pathname === '/profile' },
   ];
 

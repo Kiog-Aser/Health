@@ -2,9 +2,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { FoodEntry } from '../types';
-
-// Gemini API configuration using environment variables
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY_HERE';
+import { databaseService } from './database';
 
 interface DetailedIngredient {
   name: string;
@@ -38,10 +36,35 @@ interface FoodAnalysisResult {
 }
 
 class GeminiService {
-  private ai: GoogleGenAI;
+  private ai: GoogleGenAI | null = null;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    // AI instance will be initialized when needed with user's API key
+  }
+
+  /**
+   * Get user's Gemini API key from stored preferences
+   */
+  private async getApiKey(): Promise<string | null> {
+    try {
+      const profile = await databaseService.getUserProfile();
+      return profile?.preferences?.apiKeys?.geminiApiKey || null;
+    } catch (error) {
+      console.error('Failed to get API key:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Initialize AI instance with user's API key
+   */
+  private async initializeAI(): Promise<void> {
+    const apiKey = await this.getApiKey();
+    if (apiKey) {
+      this.ai = new GoogleGenAI({ apiKey });
+    } else {
+      this.ai = null;
+    }
   }
 
   /**
@@ -114,8 +137,9 @@ class GeminiService {
    */
   async analyzeFoodImage(imageFile: File): Promise<FoodAnalysisResult | null> {
     try {
-      if (!this.isConfigured()) {
-        throw new Error('Gemini API key not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your environment.');
+      await this.initializeAI();
+      if (!this.ai) {
+        throw new Error('Gemini API key not configured. Please add your API key in Settings.');
       }
 
       const base64Data = await this.fileToBase64(imageFile);
@@ -168,7 +192,7 @@ class GeminiService {
       `;
 
       // Generate content with text and image using the new API
-      const response = await this.ai.models.generateContent({
+      const response = await this.ai!.models.generateContent({
         model: "gemini-1.5-flash",
         contents: [
           {
@@ -254,7 +278,8 @@ class GeminiService {
    */
   async getIngredientDetails(ingredientName: string): Promise<any> {
     try {
-      if (!this.isConfigured()) {
+      await this.initializeAI();
+      if (!this.ai) {
         return null;
       }
 
@@ -301,8 +326,9 @@ class GeminiService {
   /**
    * Check if the service is properly configured
    */
-  isConfigured(): boolean {
-    return GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE' && GEMINI_API_KEY.length > 10;
+  async isConfigured(): Promise<boolean> {
+    const apiKey = await this.getApiKey();
+    return !!(apiKey && apiKey.length > 10);
   }
 
   /**
@@ -310,7 +336,8 @@ class GeminiService {
    */
   async testConnection(): Promise<boolean> {
     try {
-      if (!this.isConfigured()) {
+      await this.initializeAI();
+      if (!this.ai) {
         return false;
       }
 

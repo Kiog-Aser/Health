@@ -67,9 +67,10 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
   const checkApiConfiguration = async () => {
     setApiStatus('pending');
     try {
-      if (!geminiService.isConfigured()) {
+      const isConfigured = await geminiService.isConfigured();
+      if (!isConfigured) {
         setApiStatus('not-configured');
-        setError('AI service not configured. Please add your Gemini API key to enable food scanning.');
+        setError('AI service not configured. Please add your Gemini API key in Settings to enable food scanning.');
         return;
       }
 
