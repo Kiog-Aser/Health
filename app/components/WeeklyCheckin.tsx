@@ -12,18 +12,18 @@ interface WeeklyCheckinProps {
 
 interface CheckinData {
   weight: number;
-  bodyFat?: number;
-  muscleMass?: number;
   waistCircumference?: number;
+  chestCircumference?: number;
+  armCircumference?: number;
   notes: string;
 }
 
 export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
   const [checkinData, setCheckinData] = useState<CheckinData>({
     weight: 0,
-    bodyFat: 0,
-    muscleMass: 0,
     waistCircumference: 0,
+    chestCircumference: 0,
+    armCircumference: 0,
     notes: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,8 +41,6 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
       
       // Get the most recent weight entry
       const weightEntries = await databaseService.getBiomarkerEntries('weight');
-      const bodyFatEntries = await databaseService.getBiomarkerEntries('body_fat');
-      const muscleEntries = await databaseService.getBiomarkerEntries('muscle_mass');
       
       if (weightEntries.length > 0) {
         const lastWeightEntry = weightEntries[0];
@@ -55,17 +53,8 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
         );
         
         if (weekOldWeight) {
-          const weekOldBodyFat = bodyFatEntries.find(entry => 
-            Math.abs(entry.timestamp - oneWeekAgo) < (3 * 24 * 60 * 60 * 1000)
-          );
-          const weekOldMuscle = muscleEntries.find(entry => 
-            Math.abs(entry.timestamp - oneWeekAgo) < (3 * 24 * 60 * 60 * 1000)
-          );
-          
           setPreviousWeekData({
             weight: weekOldWeight.value,
-            bodyFat: weekOldBodyFat?.value,
-            muscleMass: weekOldMuscle?.value,
           });
         }
       }
@@ -98,28 +87,6 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
         notes: checkinData.notes || undefined,
       });
       
-      // Body fat (optional)
-      if (checkinData.bodyFat && checkinData.bodyFat > 0) {
-        entries.push({
-          id: `bodyfat_${timestamp}`,
-          type: 'body_fat',
-          value: checkinData.bodyFat,
-          unit: '%',
-          timestamp,
-        });
-      }
-      
-      // Muscle mass (optional)
-      if (checkinData.muscleMass && checkinData.muscleMass > 0) {
-        entries.push({
-          id: `muscle_${timestamp}`,
-          type: 'muscle_mass',
-          value: checkinData.muscleMass,
-          unit: 'kg',
-          timestamp,
-        });
-      }
-      
       // Waist circumference (optional)
       if (checkinData.waistCircumference && checkinData.waistCircumference > 0) {
         entries.push({
@@ -129,6 +96,30 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
           unit: 'cm',
           timestamp,
           notes: 'Waist circumference',
+        });
+      }
+      
+      // Chest circumference (optional)
+      if (checkinData.chestCircumference && checkinData.chestCircumference > 0) {
+        entries.push({
+          id: `chest_${timestamp}`,
+          type: 'custom',
+          value: checkinData.chestCircumference,
+          unit: 'cm',
+          timestamp,
+          notes: 'Chest circumference',
+        });
+      }
+      
+      // Arm circumference (optional)
+      if (checkinData.armCircumference && checkinData.armCircumference > 0) {
+        entries.push({
+          id: `arm_${timestamp}`,
+          type: 'custom',
+          value: checkinData.armCircumference,
+          unit: 'cm',
+          timestamp,
+          notes: 'Arm circumference',
         });
       }
       
@@ -142,9 +133,9 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
       // Reset form
       setCheckinData({
         weight: 0,
-        bodyFat: 0,
-        muscleMass: 0,
         waistCircumference: 0,
+        chestCircumference: 0,
+        armCircumference: 0,
         notes: '',
       });
       
@@ -200,183 +191,170 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
             <Calendar className="w-6 h-6 text-primary" />
             Weekly Check-in
           </h2>
-          {lastCheckin && (
-            <div className="text-sm text-base-content/60">
-              Last: {formatDate(lastCheckin)}
-              {isOverdue() && (
-                <span className="ml-2 badge badge-warning badge-sm">Overdue</span>
-              )}
+          {isOverdue() && (
+            <div className="badge badge-error badge-outline">
+              Overdue
             </div>
           )}
         </div>
 
-        <div className="space-y-6">
-          {/* Weight Input */}
-          <div>
+        {lastCheckin && (
+          <div className="alert alert-info mb-6">
+            <Calendar className="w-5 h-5" />
+            <div>
+              <div className="font-medium">Last check-in: {formatDate(lastCheckin)}</div>
+              <div className="text-sm opacity-75">
+                {Math.floor((Date.now() - lastCheckin.getTime()) / (24 * 60 * 60 * 1000))} days ago
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Weight - Required */}
+          <div className="form-control">
             <label className="label">
               <span className="label-text font-medium flex items-center gap-2">
-                <Scale className="w-4 h-4" />
+                <Scale className="w-4 h-4 text-primary" />
                 Weight (kg) *
-              </span>
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="number"
-                step="0.1"
-                className="input input-bordered flex-1"
-                value={checkinData.weight || ''}
-                onChange={(e) => setCheckinData({
-                  ...checkinData,
-                  weight: parseFloat(e.target.value) || 0
-                })}
-                placeholder="Enter weight"
-              />
-              {previousWeekData?.weight && checkinData.weight > 0 && (
-                <div className="flex items-center gap-1 text-sm">
-                  {(() => {
-                    const indicator = getChangeIndicator(checkinData.weight, previousWeekData.weight);
-                    if (!indicator) return <span className="text-base-content/60">No change</span>;
-                    
-                    return (
-                      <div className={`flex items-center gap-1 ${
-                        indicator.direction === 'up' ? 'text-orange-500' : 'text-green-500'
-                      }`}>
-                        {indicator.direction === 'up' ? 
-                          <TrendingUp className="w-4 h-4" /> : 
-                          <TrendingDown className="w-4 h-4" />
-                        }
-                        <span>{Math.abs(indicator.change).toFixed(1)}kg</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Body Fat Percentage */}
-          <div>
-            <label className="label">
-              <span className="label-text">Body Fat (%)</span>
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="number"
-                step="0.1"
-                className="input input-bordered flex-1"
-                value={checkinData.bodyFat || ''}
-                onChange={(e) => setCheckinData({
-                  ...checkinData,
-                  bodyFat: parseFloat(e.target.value) || 0
-                })}
-                placeholder="Optional"
-              />
-              {previousWeekData?.bodyFat && checkinData.bodyFat && checkinData.bodyFat > 0 && (
-                <div className="flex items-center gap-1 text-sm">
-                  {(() => {
-                    const indicator = getChangeIndicator(checkinData.bodyFat, previousWeekData.bodyFat);
-                    if (!indicator) return <span className="text-base-content/60">No change</span>;
-                    
-                    return (
-                      <div className={`flex items-center gap-1 ${
-                        indicator.direction === 'up' ? 'text-orange-500' : 'text-green-500'
-                      }`}>
-                        {indicator.direction === 'up' ? 
-                          <TrendingUp className="w-4 h-4" /> : 
-                          <TrendingDown className="w-4 h-4" />
-                        }
-                        <span>{Math.abs(indicator.change).toFixed(1)}%</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Muscle Mass */}
-          <div>
-            <label className="label">
-              <span className="label-text">Muscle Mass (kg)</span>
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="number"
-                step="0.1"
-                className="input input-bordered flex-1"
-                value={checkinData.muscleMass || ''}
-                onChange={(e) => setCheckinData({
-                  ...checkinData,
-                  muscleMass: parseFloat(e.target.value) || 0
-                })}
-                placeholder="Optional"
-              />
-              {previousWeekData?.muscleMass && checkinData.muscleMass && checkinData.muscleMass > 0 && (
-                <div className="flex items-center gap-1 text-sm">
-                  {(() => {
-                    const indicator = getChangeIndicator(checkinData.muscleMass, previousWeekData.muscleMass);
-                    if (!indicator) return <span className="text-base-content/60">No change</span>;
-                    
-                    return (
-                      <div className={`flex items-center gap-1 ${
-                        indicator.direction === 'up' ? 'text-green-500' : 'text-orange-500'
-                      }`}>
-                        {indicator.direction === 'up' ? 
-                          <TrendingUp className="w-4 h-4" /> : 
-                          <TrendingDown className="w-4 h-4" />
-                        }
-                        <span>{Math.abs(indicator.change).toFixed(1)}kg</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Waist Circumference */}
-          <div>
-            <label className="label">
-              <span className="label-text flex items-center gap-2">
-                <Ruler className="w-4 h-4" />
-                Waist Circumference (cm)
               </span>
             </label>
             <input
               type="number"
               step="0.1"
-              className="input input-bordered w-full"
+              placeholder="70.5"
+              className="input input-bordered"
+              value={checkinData.weight || ''}
+              onChange={(e) => setCheckinData({
+                ...checkinData,
+                weight: parseFloat(e.target.value) || 0
+              })}
+            />
+            {previousWeekData?.weight && checkinData.weight > 0 && (
+              <div className="mt-2">
+                {(() => {
+                  const indicator = getChangeIndicator(checkinData.weight, previousWeekData.weight);
+                  if (!indicator) return null;
+                  
+                  return (
+                    <div className={`flex items-center gap-1 text-sm ${
+                      indicator.direction === 'up' ? 'text-orange-500' : 'text-green-500'
+                    }`}>
+                      {indicator.direction === 'up' ? 
+                        <TrendingUp className="w-4 h-4" /> : 
+                        <TrendingDown className="w-4 h-4" />
+                      }
+                      {Math.abs(indicator.change).toFixed(1)}kg ({indicator.percent.toFixed(1)}%)
+                      from last week
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+
+          {/* Waist Circumference */}
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-medium flex items-center gap-2">
+                <Ruler className="w-4 h-4 text-primary" />
+                Waist (cm)
+              </span>
+            </label>
+            <input
+              type="number"
+              step="0.5"
+              placeholder="85"
+              className="input input-bordered"
               value={checkinData.waistCircumference || ''}
               onChange={(e) => setCheckinData({
                 ...checkinData,
                 waistCircumference: parseFloat(e.target.value) || 0
               })}
-              placeholder="Optional"
             />
+            <label className="label">
+              <span className="label-text-alt text-base-content/60">
+                Measure at navel level
+              </span>
+            </label>
           </div>
 
-          {/* Notes */}
-          <div>
+          {/* Chest Circumference */}
+          <div className="form-control">
             <label className="label">
-              <span className="label-text">Notes</span>
+              <span className="label-text font-medium flex items-center gap-2">
+                <Ruler className="w-4 h-4 text-primary" />
+                Chest (cm)
+              </span>
             </label>
-            <textarea
-              className="textarea textarea-bordered w-full"
-              rows={3}
-              value={checkinData.notes}
+            <input
+              type="number"
+              step="0.5"
+              placeholder="100"
+              className="input input-bordered"
+              value={checkinData.chestCircumference || ''}
               onChange={(e) => setCheckinData({
                 ...checkinData,
-                notes: e.target.value
+                chestCircumference: parseFloat(e.target.value) || 0
               })}
-              placeholder="How are you feeling? Any observations about your progress?"
             />
+            <label className="label">
+              <span className="label-text-alt text-base-content/60">
+                Measure around fullest part
+              </span>
+            </label>
           </div>
 
-          {/* Submit Button */}
+          {/* Arm Circumference */}
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-medium flex items-center gap-2">
+                <Ruler className="w-4 h-4 text-primary" />
+                Arm (cm)
+              </span>
+            </label>
+            <input
+              type="number"
+              step="0.5"
+              placeholder="32"
+              className="input input-bordered"
+              value={checkinData.armCircumference || ''}
+              onChange={(e) => setCheckinData({
+                ...checkinData,
+                armCircumference: parseFloat(e.target.value) || 0
+              })}
+            />
+            <label className="label">
+              <span className="label-text-alt text-base-content/60">
+                Measure at largest point (flexed)
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="form-control mt-6">
+          <label className="label">
+            <span className="label-text font-medium">Notes (optional)</span>
+          </label>
+          <textarea
+            className="textarea textarea-bordered"
+            placeholder="How are you feeling? Any observations about your progress..."
+            rows={3}
+            value={checkinData.notes}
+            onChange={(e) => setCheckinData({
+              ...checkinData,
+              notes: e.target.value
+            })}
+          />
+        </div>
+
+        {/* Submit Button */}
+        <div className="flex justify-end mt-6">
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || checkinData.weight <= 0}
-            className="btn btn-primary w-full"
+            className="btn btn-primary btn-wide"
           >
             {isSubmitting ? (
               <>
@@ -386,12 +364,24 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
             ) : (
               <>
                 <Target className="w-4 h-4" />
-                Complete Weekly Check-in
+                Complete Check-in
               </>
             )}
           </button>
         </div>
+
+        {/* Tips */}
+        <div className="mt-6 p-4 bg-base-200 rounded-lg">
+          <h4 className="font-medium mb-2">📏 Measurement Tips:</h4>
+          <ul className="text-sm space-y-1 text-base-content/70">
+            <li>• Measure at the same time each week (preferably morning)</li>
+            <li>• Use the same measuring tape for consistency</li>
+            <li>• Take measurements before eating or drinking</li>
+            <li>• Stand straight and breathe normally while measuring</li>
+          </ul>
+        </div>
       </div>
+      
       <ToastContainer />
     </>
   );

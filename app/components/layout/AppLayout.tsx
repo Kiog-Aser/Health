@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -9,11 +9,11 @@ import {
   Dumbbell, 
   TrendingUp, 
   Settings,
-  MoreHorizontal,
-  User,
-  Brain
+  User
 } from 'lucide-react';
 import QuickCalorieWidget from '../ui/QuickCalorieWidget';
+import { notificationService } from '../../services/notificationService';
+import { databaseService } from '../../services/database';
 
 interface AppLayoutProps {
   title: string;
@@ -23,18 +23,35 @@ interface AppLayoutProps {
 export default function AppLayout({ title, children }: AppLayoutProps) {
   const pathname = usePathname();
 
+  // Initialize notifications on app load
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        await databaseService.init();
+        const profile = await databaseService.getUserProfile();
+        
+        if (profile?.preferences?.notifications) {
+          await notificationService.initializeNotifications(profile.preferences.notifications);
+          notificationService.setupNotificationHandlers();
+        }
+      } catch (error) {
+        console.error('Failed to initialize notifications:', error);
+      }
+    };
+
+    initNotifications();
+  }, []);
+
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, current: pathname === '/dashboard' || pathname === '/' },
     { name: 'Food', href: '/food', icon: Apple, current: pathname === '/food' },
     { name: 'Workouts', href: '/workout', icon: Dumbbell, current: pathname === '/workout' },
     { name: 'Progress', href: '/progress', icon: TrendingUp, current: pathname === '/progress' },
-    { name: 'Health AI', href: '/health-ai', icon: Brain, current: pathname === '/health-ai' },
     { name: 'Settings', href: '/settings', icon: Settings, current: pathname === '/settings' || pathname === '/goals' || pathname === '/biomarkers' || pathname === '/profile' },
   ];
 
-  // Primary navigation for bottom nav (most important 4 + more)
-  const primaryNav = navigation.slice(0, 4);
-  const secondaryNav = navigation.slice(4);
+  // All navigation items for bottom nav
+  const primaryNav = navigation;
 
   return (
     <div className="min-h-screen bg-base-100">
@@ -106,36 +123,6 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
             </Link>
           );
         })}
-        
-        {/* More button */}
-        <div className="dropdown dropdown-top dropdown-end">
-          <div tabIndex={0} role="button" className={`${
-            secondaryNav.some(item => item.current) 
-              ? 'active text-primary bg-primary/10' 
-              : 'text-base-content/60 hover:text-primary'
-          } transition-all duration-300`}>
-            <MoreHorizontal className="w-5 h-5" />
-            <span className="btm-nav-label text-xs">More</span>
-          </div>
-          <ul tabIndex={0} className="dropdown-content menu menu-sm z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 mb-2 border border-base-300/50">
-            {secondaryNav.map((item) => {
-              const Icon = item.icon;
-              return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center gap-2 ${
-                      item.current ? 'active' : ''
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.name}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
       </div>
     </div>
   );

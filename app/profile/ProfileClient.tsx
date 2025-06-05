@@ -123,6 +123,9 @@ export default function ProfileClient() {
               dataSharing: false,
               analytics: true,
             },
+            apiKeys: {
+              geminiApiKey: '',
+            },
           },
           createdAt: Date.now(),
         };

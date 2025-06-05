@@ -34,6 +34,7 @@ import { HealthCalculations } from '../utils/healthCalculations';
 import { UserProfile, Goal, BiomarkerEntry, BiomarkerType } from '../types';
 import AppLayout from '../components/layout/AppLayout';
 import { useToast } from '../components/ui/ToastNotification';
+import { notificationService } from '../services/notificationService';
 
 const BIOMARKER_CONFIGS = {
   weight: { name: 'Weight', unit: 'kg', icon: '⚖️', color: 'bg-blue-500' },
@@ -787,6 +788,32 @@ export default function SettingsClient() {
                 <Bell className="w-5 h-5 text-primary" />
                 Notifications
               </h3>
+              
+              {/* Permission Request */}
+              <div className="mb-4 p-3 bg-primary/10 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Push Notifications</p>
+                    <p className="text-sm text-base-content/60">
+                      Enable browser notifications for reminders
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const permission = await notificationService.requestPermission();
+                      if (permission === 'granted') {
+                        showSuccess('Notifications enabled!', 'You will now receive health reminders');
+                      } else {
+                        showError('Permission denied', 'Please enable notifications in your browser settings');
+                      }
+                    }}
+                    className="btn btn-primary btn-sm"
+                  >
+                    Enable
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span>Meal Reminders</span>

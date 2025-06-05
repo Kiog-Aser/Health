@@ -246,13 +246,13 @@ Important: Always remind users that this is general information and not personal
 
   return (
     <>
-      <div className="health-card p-0 h-[600px] flex flex-col">
+      <div className="health-card p-0 h-[70vh] md:h-[600px] flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10">
+        <div className="p-3 md:p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Brain className="w-6 h-6 text-primary" />
-              <h3 className="text-lg font-semibold">Health AI Assistant</h3>
+              <Brain className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+              <h3 className="text-base md:text-lg font-semibold">Health AI Assistant</h3>
             </div>
             {onClose && (
               <button
@@ -266,21 +266,21 @@ Important: Always remind users that this is general information and not personal
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] p-3 rounded-lg border-l-4 ${
+                className={`max-w-[85%] md:max-w-[80%] p-2 md:p-3 rounded-lg border-l-4 ${
                   message.isUser
                     ? 'bg-primary text-primary-content ml-auto'
                     : `bg-base-200 ${getCategoryColor(message.category)}`
                 }`}
               >
                 {!message.isUser && (
-                  <div className="flex items-center gap-2 mb-2 text-sm">
+                  <div className="flex items-center gap-2 mb-2 text-xs md:text-sm">
                     <span>{getCategoryIcon(message.category)}</span>
                     <span className="font-medium capitalize">
                       {message.category || 'Health Assistant'}
@@ -288,7 +288,7 @@ Important: Always remind users that this is general information and not personal
                   </div>
                 )}
                 
-                <div className="whitespace-pre-wrap text-sm">
+                <div className="whitespace-pre-wrap text-xs md:text-sm leading-relaxed">
                   {message.content}
                 </div>
                 
@@ -324,17 +324,17 @@ Important: Always remind users that this is general information and not personal
 
         {/* Quick Questions */}
         {messages.length === 1 && (
-          <div className="p-4 border-t border-b bg-base-100">
-            <div className="mb-2 flex items-center gap-2 text-sm text-base-content/60">
+          <div className="p-3 md:p-4 border-t border-b bg-base-100">
+            <div className="mb-2 flex items-center gap-2 text-xs md:text-sm text-base-content/60">
               <Lightbulb className="w-4 h-4" />
-              Quick questions to get started:
+              Quick questions:
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1 md:gap-2">
               {quickQuestions.map((question, index) => (
                 <button
                   key={index}
                   onClick={() => handleQuickQuestion(question)}
-                  className="btn btn-outline btn-xs"
+                  className="btn btn-outline btn-xs text-xs"
                   disabled={isLoading}
                 >
                   {question}
@@ -345,29 +345,29 @@ Important: Always remind users that this is general information and not personal
         )}
 
         {/* Input */}
-        <div className="p-4 border-t">
+        <div className="p-3 md:p-4 border-t">
           <div className="flex gap-2">
             <textarea
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask about nutrition, exercise, wellness, or health research..."
-              className="textarea textarea-bordered flex-1 resize-none"
+              placeholder="Ask about nutrition, exercise, wellness..."
+              className="textarea textarea-bordered flex-1 resize-none text-sm"
               rows={2}
               disabled={isLoading}
             />
             <button
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isLoading}
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm md:btn-md"
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
           
-          <div className="text-xs text-base-content/50 mt-2 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            This provides general health information only. Consult healthcare professionals for medical advice.
+          <div className="text-xs text-base-content/50 mt-2 flex items-start gap-1">
+            <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+            <span>General health information only. Consult healthcare professionals for medical advice.</span>
           </div>
         </div>
       </div>

@@ -17,7 +17,8 @@ import {
   Filter,
   Download,
   Share,
-  Zap
+  Zap,
+  Ruler
 } from 'lucide-react';
 import { databaseService } from '../services/database';
 import { HealthCalculations } from '../utils/healthCalculations';
@@ -166,6 +167,85 @@ export default function ProgressClient() {
         {/* History Tab */}
         {activeTab === 'history' && (
           <div className="space-y-6">
+            {/* Weight Progress Chart */}
+            {recentEntries.filter(e => e.type === 'weight').length > 1 && (
+              <div className="health-card">
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <LineChart className="w-6 h-6 text-primary" />
+                  Weight Progress
+                </h2>
+                <div className="h-64 flex items-center justify-center bg-base-200/30 rounded-lg">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-base-content/40 mx-auto mb-2" />
+                    <p className="text-base-content/60">Weight trend chart would appear here</p>
+                    <p className="text-sm text-base-content/40 mt-2">
+                      {recentEntries.filter(e => e.type === 'weight').length} weight entries recorded
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Measurements Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Weight Card */}
+              {(() => {
+                const weightEntries = recentEntries.filter(e => e.type === 'weight');
+                if (weightEntries.length === 0) return null;
+                const latest = weightEntries[0];
+                const previous = weightEntries[1];
+                const change = previous ? latest.value - previous.value : 0;
+                
+                return (
+                  <div className="health-card">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Scale className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Weight</span>
+                    </div>
+                    <div className="text-2xl font-bold">{latest.value} {latest.unit}</div>
+                    {previous && (
+                      <div className={`flex items-center gap-1 text-sm ${change >= 0 ? 'text-orange-500' : 'text-green-500'}`}>
+                        {change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        {Math.abs(change).toFixed(1)} {latest.unit} from last measurement
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Custom Measurements */}
+              {(() => {
+                const customEntries = recentEntries.filter(e => e.type === 'custom');
+                const waistEntries = customEntries.filter(e => e.notes?.includes('Waist'));
+                const chestEntries = customEntries.filter(e => e.notes?.includes('Chest'));
+                
+                if (waistEntries.length === 0 && chestEntries.length === 0) return null;
+                
+                return (
+                  <>
+                    {waistEntries.length > 0 && (
+                      <div className="health-card">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Ruler className="w-5 h-5 text-primary" />
+                          <span className="font-medium">Waist</span>
+                        </div>
+                        <div className="text-2xl font-bold">{waistEntries[0].value} {waistEntries[0].unit}</div>
+                      </div>
+                    )}
+                    {chestEntries.length > 0 && (
+                      <div className="health-card">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Ruler className="w-5 h-5 text-primary" />
+                          <span className="font-medium">Chest</span>
+                        </div>
+                        <div className="text-2xl font-bold">{chestEntries[0].value} {chestEntries[0].unit}</div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
             <div className="health-card">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <TrendingUp className="w-6 h-6 text-primary" />
