@@ -336,17 +336,17 @@ export default function WorkoutClient() {
         {/* Workout Status Card */}
         {isWorkoutActive && workoutSession && (
           <div className="health-card bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-primary/30 shadow-lg">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 backdrop-blur-sm">
-                  <Activity className="w-8 h-8 text-primary" />
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/20 backdrop-blur-sm shrink-0">
+                  <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-primary mb-1">Active Workout</h2>
-                  <div className="flex items-center gap-4 text-sm">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-primary mb-1">Active Workout</h2>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      <span className="font-mono text-lg">{formatTime(elapsedTime)}</span>
+                      <span className="font-mono text-base sm:text-lg">{formatTime(elapsedTime)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Target className="w-4 h-4" />
@@ -360,27 +360,27 @@ export default function WorkoutClient() {
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={pauseWorkout}
-                  className={`btn ${isPaused ? 'btn-success' : 'btn-warning'} btn-sm gap-2`}
+                  className={`btn ${isPaused ? 'btn-success' : 'btn-warning'} btn-sm gap-1 sm:gap-2 shrink-0`}
                 >
                   {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  {isPaused ? 'Resume' : 'Pause'}
+                  <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
                 </button>
                 <button
                   onClick={() => setShowExerciseSelection(true)}
-                  className="btn btn-primary btn-sm gap-2"
+                  className="btn btn-primary btn-sm gap-1 sm:gap-2 shrink-0"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Exercise
+                  <span className="hidden sm:inline">Add Exercise</span>
                 </button>
                 <button
                   onClick={finishWorkout}
-                  className="btn btn-success btn-sm gap-2"
+                  className="btn btn-success btn-sm gap-1 sm:gap-2 shrink-0"
                 >
                   <Square className="w-4 h-4" />
-                  Finish
+                  <span className="hidden sm:inline">Finish</span>
                 </button>
               </div>
             </div>

@@ -367,30 +367,30 @@ export default function SettingsClient() {
 
         {/* Tab Navigation */}
         <div className="w-full overflow-x-auto">
-          <div className="tabs tabs-bordered bg-base-100 border border-base-300 rounded-lg p-1 min-w-fit">
+          <div className="tabs bg-base-100 rounded-lg p-1 min-w-fit">
             <button
-              className={`tab tab-bordered whitespace-nowrap ${activeTab === 'profile' ? 'tab-active' : ''}`}
+              className={`tab whitespace-nowrap ${activeTab === 'profile' ? 'tab-active bg-primary text-primary-content' : 'hover:bg-base-200'}`}
               onClick={() => setActiveTab('profile')}
             >
               <User className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Profile</span>
             </button>
             <button
-              className={`tab tab-bordered whitespace-nowrap ${activeTab === 'goals' ? 'tab-active' : ''}`}
+              className={`tab whitespace-nowrap ${activeTab === 'goals' ? 'tab-active bg-primary text-primary-content' : 'hover:bg-base-200'}`}
               onClick={() => setActiveTab('goals')}
             >
               <Target className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Goals</span>
             </button>
             <button
-              className={`tab tab-bordered whitespace-nowrap ${activeTab === 'biomarkers' ? 'tab-active' : ''}`}
+              className={`tab whitespace-nowrap ${activeTab === 'biomarkers' ? 'tab-active bg-primary text-primary-content' : 'hover:bg-base-200'}`}
               onClick={() => setActiveTab('biomarkers')}
             >
               <Activity className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Measurements</span>
             </button>
             <button
-              className={`tab tab-bordered whitespace-nowrap ${activeTab === 'preferences' ? 'tab-active' : ''}`}
+              className={`tab whitespace-nowrap ${activeTab === 'preferences' ? 'tab-active bg-primary text-primary-content' : 'hover:bg-base-200'}`}
               onClick={() => setActiveTab('preferences')}
             >
               <Settings className="w-4 h-4 mr-1 sm:mr-2" />

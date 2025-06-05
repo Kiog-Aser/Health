@@ -295,19 +295,19 @@ export default function ProgressClient() {
     <AppLayout title="📈 Progress">
       <div className="space-y-6">
         {/* Header with Controls */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-4">
           <div>
             <h1 className="text-2xl font-bold">Progress Tracking</h1>
             <p className="text-base-content/60">Monitor your health and fitness journey</p>
           </div>
           
-          <div className="flex gap-2">
-            <div className="join">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+            <div className="join w-full sm:w-auto">
               {(['week', 'month', 'quarter', 'year'] as const).map((timeframe) => (
                 <button
                   key={timeframe}
                   onClick={() => setSelectedTimeframe(timeframe)}
-                  className={`btn btn-sm join-item ${selectedTimeframe === timeframe ? 'btn-active' : ''}`}
+                  className={`btn btn-sm join-item flex-1 sm:flex-none ${selectedTimeframe === timeframe ? 'btn-active' : ''}`}
                 >
                   {timeframe === 'quarter' ? '3M' : timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}
                 </button>
@@ -316,16 +316,16 @@ export default function ProgressClient() {
             
             <button
               onClick={generateHealthReport}
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm btn-primary gap-2 w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
-              Report
+              <span>Generate Report</span>
             </button>
           </div>
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <div className="health-card p-4">
             <div className="flex items-center justify-between mb-2">
               <Scale className="w-5 h-5 text-blue-500" />

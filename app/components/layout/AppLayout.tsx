@@ -121,12 +121,12 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
       </header>
 
       {/* Main Content with padding for bottom nav on mobile */}
-      <main className="container mx-auto px-4 py-6 max-w-7xl pb-20 lg:pb-6">
+      <main className="container mx-auto px-4 py-6 max-w-7xl pb-24 lg:pb-6">
         {children}
       </main>
 
       {/* Bottom Navigation for Mobile - Mobile App Style */}
-      <div className="btm-nav lg:hidden bg-base-200/80 backdrop-blur-md border-t border-base-300/50">
+      <div className="btm-nav lg:hidden bg-base-200/80 backdrop-blur-md border-t border-base-300/50 h-20">
         {primaryNav.map((item) => {
           const Icon = item.icon;
           return (
