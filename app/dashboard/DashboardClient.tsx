@@ -8,11 +8,15 @@ import AppLayout from '../components/layout/AppLayout';
 import CalorieRing from '../components/ui/CalorieRing';
 import MacroBreakdown from '../components/ui/MacroBreakdown';
 import LoadingScreen from '../components/ui/LoadingScreen';
+import FoodDetailModal from '../components/ui/FoodDetailModal';
+import { FoodEntry } from '../types';
 
 export default function DashboardClient() {
   const router = useRouter();
   const { state, actions } = useHealth();
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<FoodEntry | null>(null);
+  const [showFoodDetail, setShowFoodDetail] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -23,6 +27,16 @@ export default function DashboardClient() {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const handleFoodClick = (food: FoodEntry) => {
+    setSelectedFood(food);
+    setShowFoodDetail(true);
+  };
+
+  const handleCloseFoodDetail = () => {
+    setShowFoodDetail(false);
+    setSelectedFood(null);
   };
 
   const getScoreColor = (score: number) => {
@@ -189,7 +203,11 @@ export default function DashboardClient() {
             <h3 className="text-lg font-semibold mb-6">Recent Meals</h3>
             <div className="space-y-3">
               {state.foodEntries.slice(0, 3).map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-base-200/50">
+                <button
+                  key={entry.id}
+                  onClick={() => handleFoodClick(entry)}
+                  className="flex items-center justify-between p-3 rounded-lg bg-base-200/50 hover:bg-base-300/50 transition-colors text-left w-full"
+                >
                   <div className="flex-1">
                     <h4 className="font-medium text-sm">{entry.name}</h4>
                     <p className="text-xs text-base-content/60 capitalize">{entry.mealType}</p>
@@ -198,7 +216,7 @@ export default function DashboardClient() {
                     <div className="text-sm font-medium">{entry.calories} cal</div>
                     <div className="text-xs text-base-content/60">{entry.protein}g protein</div>
                   </div>
-                </div>
+                </button>
               ))}
               {state.foodEntries.length === 0 && (
                 <div className="text-center py-8 text-base-content/60">
@@ -239,6 +257,13 @@ export default function DashboardClient() {
           </div>
         </div>
       </div>
+
+      {/* Food Detail Modal */}
+      <FoodDetailModal
+        food={selectedFood}
+        isOpen={showFoodDetail}
+        onClose={handleCloseFoodDetail}
+      />
     </AppLayout>
   );
 } 

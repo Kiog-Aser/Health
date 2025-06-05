@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Camera, X, RotateCcw, RefreshCw, Zap, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { FoodEntry } from '../types';
 import { geminiService } from '../services/geminiService';
-import { databaseService } from '../services/database';
 import FoodAnalysisModal from '../components/ui/FoodAnalysisModal';
 
 interface FoodCameraModalProps {
@@ -316,7 +315,6 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
 
   const handleAnalysisConfirm = async (foodEntry: FoodEntry) => {
     try {
-      await databaseService.addFoodEntry(foodEntry);
       onFoodAdded(foodEntry);
       setShowAnalysisModal(false);
       onClose();

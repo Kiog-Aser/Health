@@ -12,6 +12,7 @@ import CalorieRing from '../components/ui/CalorieRing';
 import MacroBreakdown from '../components/ui/MacroBreakdown';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import { useToast } from '../components/ui/ToastNotification';
+import FoodDetailModal from '../components/ui/FoodDetailModal';
 import { FoodEntry } from '../types';
 
 const MEAL_TYPES = [
@@ -32,6 +33,8 @@ export default function FoodClient() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState<'all' | FoodEntry['mealType']>('all');
+  const [selectedFood, setSelectedFood] = useState<FoodEntry | null>(null);
+  const [showFoodDetail, setShowFoodDetail] = useState(false);
 
   const [newEntry, setNewEntry] = useState({
     name: '',
@@ -184,6 +187,16 @@ export default function FoodClient() {
       console.error('Failed to add AI scanned food:', error);
       showError('Failed to Add Food', 'Please try again.');
     }
+  };
+
+  const handleFoodClick = (food: FoodEntry) => {
+    setSelectedFood(food);
+    setShowFoodDetail(true);
+  };
+
+  const handleCloseFoodDetail = () => {
+    setShowFoodDetail(false);
+    setSelectedFood(null);
   };
 
   if (state.isLoading) {
@@ -366,7 +379,10 @@ export default function FoodClient() {
                     <div className="space-y-2">
                       {entries.slice(0, 3).map((entry) => (
                         <div key={entry.id} className="flex items-center justify-between p-3 bg-base-50 rounded-lg">
-                          <div className="flex-1 min-w-0">
+                          <button
+                            onClick={() => handleFoodClick(entry)}
+                            className="flex-1 min-w-0 text-left hover:bg-base-200/50 rounded-lg p-2 -m-2 transition-colors"
+                          >
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-sm truncate">{entry.name}</p>
                               {entry.confidence && entry.confidence < 0.8 && (
@@ -378,7 +394,7 @@ export default function FoodClient() {
                               <span>{entry.protein}g protein</span>
                               <span>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
-                          </div>
+                          </button>
                           <button
                             onClick={() => handleDeleteEntry(entry.id)}
                             className="btn btn-ghost btn-xs btn-circle text-error"
@@ -422,7 +438,10 @@ export default function FoodClient() {
               <div className="space-y-3">
                 {getFilteredEntries().map((entry) => (
                   <div key={entry.id} className="flex items-center justify-between p-4 bg-base-50 rounded-lg">
-                    <div className="flex-1 min-w-0">
+                    <button
+                      onClick={() => handleFoodClick(entry)}
+                      className="flex-1 min-w-0 text-left hover:bg-base-200/50 rounded-lg p-2 -m-2 transition-colors"
+                    >
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="font-medium truncate">{entry.name}</h4>
                         {entry.confidence && (
@@ -440,24 +459,7 @@ export default function FoodClient() {
                       <div className="text-xs text-base-content/50 mt-2">
                         {new Date(entry.timestamp).toLocaleString()}
                       </div>
-                      {entry.aiAnalysis && (
-                        <button
-                          onClick={() => {
-                            if (!entry.aiAnalysis) return;
-                            try {
-                              const analysis = JSON.parse(entry.aiAnalysis);
-                              alert(`AI Analysis:\n\n${analysis.analysis}\n\nHealth Score: ${analysis.healthScore}/10\n\nIngredients: ${analysis.detectedIngredients?.map((ing: any) => ing.name).join(', ') || 'None detected'}`);
-                            } catch (e) {
-                              alert(`AI Analysis: ${entry.aiAnalysis}`);
-                            }
-                          }}
-                          className="btn btn-ghost btn-xs mt-2"
-                        >
-                          <Eye className="w-3 h-3 mr-1" />
-                          View AI Analysis
-                        </button>
-                      )}
-                    </div>
+                    </button>
                     <div className="flex items-center gap-2 ml-4">
                       <button
                         onClick={() => handleDeleteEntry(entry.id)}
@@ -674,6 +676,13 @@ export default function FoodClient() {
           </div>
         </div>
       )}
+
+      {/* Food Detail Modal */}
+      <FoodDetailModal
+        food={selectedFood}
+        isOpen={showFoodDetail}
+        onClose={handleCloseFoodDetail}
+      />
     </AppLayout>
   );
 } 
