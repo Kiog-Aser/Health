@@ -36,73 +36,36 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-base-100">
-      {/* Desktop Header with Full Navigation */}
-      <header className="navbar bg-base-200/80 backdrop-blur-md shadow-sm border-b border-base-300/50">
-        <div className="navbar-start">
-          <Link href="/dashboard" className="btn btn-ghost text-xl font-bold gradient-text">
-            🏥 HealthTracker
+      {/* Main Content with padding for bottom nav on mobile */}
+      <main className="container mx-auto px-4 py-6 max-w-7xl pb-24 lg:pb-6">
+        {/* Desktop Navigation - Compact */}
+        <div className="hidden lg:flex justify-between items-center mb-8 p-4 bg-base-200/50 backdrop-blur-sm rounded-2xl border border-base-300/50">
+          <Link href="/dashboard" className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            🏥 HealthTracker Pro
           </Link>
-        </div>
-        
-        {/* Desktop Navigation - Center */}
-        <div className="navbar-center hidden lg:flex">
-          <ul className="menu menu-horizontal px-1 bg-base-100/80 backdrop-blur-sm rounded-box shadow-sm border border-base-300/50">
+          
+          <div className="flex items-center gap-2">
             {navigation.map((item) => {
               const Icon = item.icon;
               return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center gap-2 transition-all duration-300 ${
-                      item.current 
-                        ? 'active bg-primary text-primary-content shadow-lg' 
-                        : 'hover:bg-base-200 hover:shadow-md'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.name}
-                  </Link>
-                </li>
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
+                    item.current 
+                      ? 'bg-primary text-primary-content shadow-lg' 
+                      : 'hover:bg-base-300 text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{item.name}</span>
+                </Link>
               );
             })}
-          </ul>
-        </div>
-        
-        <div className="navbar-end gap-3">
-          {/* Quick Calorie Widget - Desktop only */}
-          <div className="hidden lg:block">
+          </div>
+          
+          <div className="flex items-center gap-3">
             <QuickCalorieWidget />
-          </div>
-          
-          {/* Mobile more menu for secondary nav */}
-          <div className="lg:hidden">
-            <div className="dropdown dropdown-end">
-              <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
-                <MoreHorizontal className="w-5 h-5" />
-              </div>
-              <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300/50">
-                {secondaryNav.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className={`flex items-center gap-2 ${
-                          item.current ? 'active' : ''
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                        {item.name}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-          
-          {/* Desktop user menu */}
-          <div className="hidden lg:block">
             <div className="dropdown dropdown-end">
               <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
                 <div className="w-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
@@ -118,10 +81,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
             </div>
           </div>
         </div>
-      </header>
-
-      {/* Main Content with padding for bottom nav on mobile */}
-      <main className="container mx-auto px-4 py-6 max-w-7xl pb-24 lg:pb-6">
+        
         {children}
       </main>
 

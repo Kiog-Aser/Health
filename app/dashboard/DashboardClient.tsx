@@ -60,66 +60,6 @@ export default function DashboardClient() {
   return (
     <AppLayout title="🏥 HealthTracker Pro">
       <div className="space-y-6">
-        {/* Header with Refresh */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Welcome Back!
-            </h1>
-            <p className="text-base-content/60 mt-1">Let's track your health journey today</p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="btn btn-ghost btn-sm gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="health-card p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-primary" />
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button 
-              onClick={() => router.push('/food')}
-              className="group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-xl hover:scale-105 transition-all duration-300"
-            >
-              <Zap className="w-8 h-8 mb-3 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium">AI Food Scan</span>
-              <span className="text-xs opacity-75 mt-1">Smart camera analysis</span>
-            </button>
-            <button 
-              onClick={() => router.push('/food')}
-              className="group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:shadow-xl hover:scale-105 transition-all duration-300"
-            >
-              <Camera className="w-8 h-8 mb-3 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium">Barcode Scan</span>
-              <span className="text-xs opacity-75 mt-1">Quick product lookup</span>
-            </button>
-            <button 
-              onClick={() => router.push('/workout')}
-              className="group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 text-white hover:shadow-xl hover:scale-105 transition-all duration-300"
-            >
-              <Dumbbell className="w-8 h-8 mb-3 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium">Log Workout</span>
-              <span className="text-xs opacity-75 mt-1">Track exercise</span>
-            </button>
-            <button 
-              onClick={() => router.push('/goals')}
-              className="group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 text-white hover:shadow-xl hover:scale-105 transition-all duration-300"
-            >
-              <Target className="w-8 h-8 mb-3 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium">Set Goals</span>
-              <span className="text-xs opacity-75 mt-1">Track targets</span>
-            </button>
-          </div>
-        </div>
-
         {/* Today's Overview with Real-time Calorie Ring */}
         <div className="health-card p-6">
           <div className="flex items-center justify-between mb-6">
@@ -127,9 +67,19 @@ export default function DashboardClient() {
               <Calendar className="w-5 h-5 text-primary" />
               Today's Overview
             </h2>
-            <div className="flex items-center text-sm text-base-content/60 bg-base-200 px-3 py-1 rounded-full">
-              <Calendar className="w-4 h-4 mr-1" />
-              {new Date(state.selectedDate).toLocaleDateString()}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center text-sm text-base-content/60 bg-base-200 px-3 py-1 rounded-full">
+                <Calendar className="w-4 h-4 mr-1" />
+                {new Date(state.selectedDate).toLocaleDateString()}
+              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="btn btn-ghost btn-sm gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
             </div>
           </div>
 
@@ -146,7 +96,7 @@ export default function DashboardClient() {
               />
             </div>
 
-            {/* Key Metrics */}
+            {/* Key Metrics - Only Steps and Water */}
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30">
                 <div className="flex justify-center mb-2">
@@ -163,23 +113,31 @@ export default function DashboardClient() {
                 <div className="text-2xl font-bold text-cyan-600">{state.dailyProgress.water}L</div>
                 <div className="text-sm text-cyan-600/70">Water</div>
               </div>
-
-              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30">
-                <div className="flex justify-center mb-2">
-                  <Clock className="w-6 h-6 text-orange-600" />
-                </div>
-                <div className="text-2xl font-bold text-orange-600">{state.dailyProgress.workoutMinutes}min</div>
-                <div className="text-sm text-orange-600/70">Exercise</div>
-              </div>
-
-              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30">
-                <div className="flex justify-center mb-2">
-                  <Flame className="w-6 h-6 text-red-600" />
-                </div>
-                <div className="text-2xl font-bold text-red-600">{state.dailyProgress.calories.burned}</div>
-                <div className="text-sm text-red-600/70">Burned</div>
-              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Quick Actions - All 4 in one row */}
+        <div className="health-card p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-primary" />
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+            <button 
+              onClick={() => router.push('/food')}
+              className="group flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
+            >
+              <Zap className="w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-center">AI Food Scan</span>
+            </button>
+            <button 
+              onClick={() => router.push('/workout')}
+              className="group flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
+            >
+              <Dumbbell className="w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-center">Log Workout</span>
+            </button>
           </div>
         </div>
 
