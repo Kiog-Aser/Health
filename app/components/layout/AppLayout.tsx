@@ -76,7 +76,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                       : 'hover:bg-base-300 text-base-content/70 hover:text-base-content'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                                      <Icon className="w-5 h-5" />
                   <span className="text-sm font-medium">{item.name}</span>
                 </Link>
               );
@@ -88,7 +88,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
             <div className="dropdown dropdown-end">
               <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
                 <div className="w-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                  <User className="w-4 h-4" />
+                  <User className="w-5 h-5" />
                 </div>
               </div>
               <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300/50">

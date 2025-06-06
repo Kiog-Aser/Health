@@ -76,6 +76,27 @@ class ExerciseDatabase {
         safetyNotes: ['Don\'t use too heavy weight', 'Maintain control throughout range of motion']
       },
 
+      // BAR DIP
+      {
+        id: 'bar-dip',
+        name: 'Bar Dip',
+        category: 'Chest',
+        muscleGroups: ['Chest', 'Triceps', 'Shoulders'],
+        equipment: ['Dip Bar', 'Parallel Bars'],
+        instructions: [
+          'Position yourself between parallel bars',
+          'Grip bars and lift body until arms are straight',
+          'Lower body by bending elbows until shoulders are below elbows',
+          'Push back up to starting position'
+        ],
+        difficulty: 'intermediate',
+        caloriesPerMinute: 8,
+        description: 'A compound bodyweight exercise that targets chest, triceps, and shoulders.',
+        tips: ['Lean forward for chest emphasis', 'Control the descent', 'Keep shoulders down'],
+        variations: ['Assisted dips', 'Weighted dips', 'Ring dips'],
+        safetyNotes: ['Don\'t go too low if you feel shoulder pain', 'Build up strength gradually']
+      },
+
       // BACK EXERCISES
       {
         id: 'back-pull-up',
@@ -173,6 +194,27 @@ class ExerciseDatabase {
         tips: ['Keep front knee over ankle', 'Don\'t let back knee touch ground', 'Stay upright'],
         variations: ['Reverse lunges', 'Walking lunges', 'Lateral lunges'],
         safetyNotes: ['Control the movement', 'Don\'t let front knee drift inward']
+      },
+
+      // ARM EXERCISES
+      {
+        id: 'arms-barbell-curl',
+        name: 'Barbell Curl',
+        category: 'Arms',
+        muscleGroups: ['Biceps', 'Forearms'],
+        equipment: ['Barbell'],
+        instructions: [
+          'Stand with feet hip-width apart holding barbell with underhand grip',
+          'Keep elbows close to torso throughout movement',
+          'Curl the weight up by contracting biceps',
+          'Lower with control back to starting position'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 5,
+        description: 'A classic bicep isolation exercise using a barbell.',
+        tips: ['Don\'t swing the weight', 'Keep elbows stationary', 'Full range of motion'],
+        variations: ['Dumbbell curls', 'Hammer curls', 'Preacher curls'],
+        safetyNotes: ['Don\'t use momentum', 'Control the negative']
       },
 
       // SHOULDER EXERCISES
