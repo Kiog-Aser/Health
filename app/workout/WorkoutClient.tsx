@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Play, 
   Pause, 
@@ -48,6 +49,7 @@ interface WorkoutSet {
   isWarmup?: boolean;
   restTime?: number;
   notes?: string;
+  isPR?: boolean;
 }
 
 interface ActiveExercise extends Exercise {
@@ -73,6 +75,8 @@ interface WorkoutSession {
 }
 
 export default function WorkoutClient() {
+  const router = useRouter();
+  
   // Workout session state
   const [workoutSession, setWorkoutSession] = useState<WorkoutSession | null>(null);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -103,15 +107,37 @@ export default function WorkoutClient() {
   const [showExerciseModal, setShowExerciseModal] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [selectedExerciseForMenu, setSelectedExerciseForMenu] = useState<number | null>(null);
+  const [selectedSetForMenu, setSelectedSetForMenu] = useState<{exerciseIndex: number, setId: string} | null>(null);
+  const [showQuickStats, setShowQuickStats] = useState(false);
+  const [showCustomExerciseModal, setShowCustomExerciseModal] = useState(false);
+  const [customExerciseData, setCustomExerciseData] = useState({
+    name: '',
+    primaryMuscles: [] as string[],
+    secondaryMuscles: [] as string[],
+    equipment: [] as string[],
+    description: ''
+  });
   const [selectedExerciseInfo, setSelectedExerciseInfo] = useState<Exercise | null>(null);
-  const [showWorkoutDetail, setShowWorkoutDetail] = useState(false);
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutEntry | null>(null);
 
   // UI state
   const [workoutName, setWorkoutName] = useState('');
   const [workoutNotes, setWorkoutNotes] = useState('');
+  const [userBodyweight, setUserBodyweight] = useState(70); // Default, will be loaded from profile
 
   const categories = ['Most used', 'All exercises'];
+  
+  const muscleGroups = [
+    'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms',
+    'Quadriceps', 'Hamstrings', 'Glutes', 'Calves', 'Core', 'Traps',
+    'Latissimus Dorsi', 'Rhomboids', 'Rear Delts', 'Side Delts',
+    'Upper Chest', 'Lower Back', 'Hip Flexors', 'Obliques'
+  ];
+  
+  const equipmentTypes = [
+    'Bodyweight', 'Barbell', 'Dumbbells', 'Cable Machine', 'Pull-up Bar',
+    'Bench', 'Incline Bench', 'Squat Rack', 'Dip Bars', 'Parallel Bars',
+    'Leg Press Machine', 'Lat Pulldown Bar', 'Resistance Bands', 'Kettlebell'
+  ];
 
   useEffect(() => {
     loadData();
@@ -176,6 +202,12 @@ export default function WorkoutClient() {
       
       const popular = exerciseDatabase.getPopularExercises(20);
       setPopularExercises(popular);
+      
+      // Load user bodyweight from latest weight entry
+      const weightEntries = await databaseService.getBiomarkerEntries('weight');
+      if (weightEntries.length > 0) {
+        setUserBodyweight(weightEntries[0].value);
+      }
     } catch (error) {
       console.error('Failed to load workout data:', error);
     } finally {
@@ -215,10 +247,10 @@ export default function WorkoutClient() {
       endTime: Date.now(),
       duration: elapsedTime,
       exercises: activeExercises,
-      totalVolume: calculateWorkoutVolume(activeExercises),
+      totalVolume: calculateWorkoutVolume(activeExercises, userBodyweight),
       totalSets: calculateWorkoutSets(activeExercises),
       totalReps: calculateWorkoutReps(activeExercises),
-      calories: estimateWorkoutCalories(activeExercises, Math.round(elapsedTime / (1000 * 60))),
+      calories: estimateWorkoutCalories(activeExercises, Math.round(elapsedTime / (1000 * 60)), userBodyweight),
       name: workoutName || generateWorkoutName(activeExercises),
       notes: workoutNotes,
     };
@@ -237,17 +269,18 @@ export default function WorkoutClient() {
         duration: Math.round(session.duration / (1000 * 60)),
         calories: session.calories || 0,
         intensity: 'moderate' as const,
-        exercises: session.exercises.map(ex => ({
-          id: ex.id,
-          name: ex.name,
-          sets: ex.sets.filter(set => set.isCompleted && !set.isWarmup).length,
-          reps: Math.round(ex.sets.filter(set => set.isCompleted && !set.isWarmup)
-            .reduce((total, set) => total + set.reps, 0) / 
-            ex.sets.filter(set => set.isCompleted && !set.isWarmup).length) || 0,
-          weight: Math.round(ex.sets.filter(set => set.isCompleted && !set.isWarmup)
-            .reduce((total, set) => total + set.weight, 0) / 
-            ex.sets.filter(set => set.isCompleted && !set.isWarmup).length) || 0,
-        })),
+        exercises: session.exercises.map(ex => {
+          const completedSets = ex.sets.filter(set => set.isCompleted && !set.isWarmup);
+          return {
+            id: ex.id,
+            name: ex.name,
+            sets: completedSets.length,
+            reps: completedSets.reduce((total, set) => total + set.reps, 0),
+            weight: completedSets.length > 0 
+              ? Math.round((completedSets.reduce((total, set) => total + set.weight, 0) / completedSets.length) * 10) / 10
+              : 0,
+          };
+        }),
         timestamp: session.startTime,
         notes: session.notes,
       };
@@ -288,11 +321,12 @@ export default function WorkoutClient() {
         reps: set.reps,
         weight: set.weight,
         isCompleted: false,
+        isWarmup: false
       }));
     } else {
       // Default empty set
       initialSets = [
-        { id: `${exercise.id}_${Date.now()}`, reps: 0, weight: 0, isCompleted: false }
+        { id: `${exercise.id}_${Date.now()}`, reps: 0, weight: 0, isCompleted: false, isWarmup: false }
       ];
     }
 
@@ -313,20 +347,41 @@ export default function WorkoutClient() {
 
   const addSet = (exerciseIndex: number, isWarmup: boolean = false) => {
     setActiveExercises(prev => {
-      const updated = [...prev];
-      const exercise = updated[exerciseIndex];
-      // Add random component to make ID more unique and prevent duplicates
-      const newSetId = `${exercise.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const updatedExercises = [...prev];
+      const exercise = { 
+        ...updatedExercises[exerciseIndex],
+        sets: [...updatedExercises[exerciseIndex].sets]
+      };
+
+      const now = Date.now();
+      if (exercise.sets.length > 0) {
+        const lastSet = exercise.sets[exercise.sets.length - 1];
+        const idParts = lastSet.id.split('_');
+        if (idParts.length > 1) {
+          const lastSetTimestampStr = idParts[idParts.length - 2];
+          const lastSetTimestamp = parseInt(lastSetTimestampStr, 10);
+          if (!isNaN(lastSetTimestamp) && now - lastSetTimestamp < 300) {
+            return prev;
+          }
+        }
+      }
+
+      const setsOfSameType = exercise.sets.filter(set => set.isWarmup === isWarmup);
+      const lastSet = setsOfSameType[setsOfSameType.length - 1];
       
-      exercise.sets.push({
-        id: newSetId,
-        reps: 0,
-        weight: 0,
+      const newSet = {
+        id: `${exercise.id}_${now}_${Math.random().toString(36).substr(2, 9)}`,
+        reps: lastSet ? lastSet.reps : 0,
+        weight: lastSet ? lastSet.weight : 0,
         isCompleted: false,
+        isPR: false,
         isWarmup
-      });
+      };
+
+      exercise.sets.push(newSet);
+      updatedExercises[exerciseIndex] = exercise;
       
-      return updated;
+      return updatedExercises;
     });
   };
 
@@ -352,20 +407,61 @@ export default function WorkoutClient() {
   };
 
   const completeSet = (exerciseIndex: number, setId: string) => {
+    console.log(`Completing set: exerciseIndex=${exerciseIndex}, setId=${setId}`);
+    
     setActiveExercises(prev => {
-      const updated = [...prev];
-      const exercise = updated[exerciseIndex];
-      const set = exercise.sets.find(s => s.id === setId);
-      if (set) {
-        set.isCompleted = !set.isCompleted;
-        
-        // Start rest timer if set is completed
-        if (set.isCompleted && !set.isWarmup) {
-          setRestTimeRemaining(targetRestTime);
-          setIsRestTimerActive(true);
+      // Create a completely new array and objects to ensure React detects the change
+      const newExercises = prev.map((exercise, idx) => {
+        if (idx !== exerciseIndex) {
+          return exercise; // Return unchanged exercise
         }
-      }
-      return updated;
+
+        // Create new exercise object with new sets array
+        const newSets = exercise.sets.map(set => {
+          if (set.id !== setId) {
+            return set; // Return unchanged set
+          }
+
+          // Create completely new set object with toggled completion
+          const isNowCompleted = !set.isCompleted;
+          console.log(`Set ${setId} completion changing from ${set.isCompleted} to ${isNowCompleted}`);
+
+          const newSet = {
+            ...set,
+            isCompleted: isNowCompleted,
+            isPR: false // Reset PR flag initially
+          };
+
+          // Handle PR detection and rest timer for working sets being completed
+          if (isNowCompleted && !set.isWarmup) {
+            // Check if this is a new PR
+            const otherCompletedSets = exercise.sets.filter(s => 
+              s.id !== setId && !s.isWarmup && s.isCompleted
+            );
+            const previousMaxWeight = otherCompletedSets.length > 0 
+              ? Math.max(...otherCompletedSets.map(s => s.weight))
+              : 0;
+            
+            if (set.weight > previousMaxWeight) {
+              newSet.isPR = true;
+            }
+
+            // Start rest timer
+            setRestTimeRemaining(targetRestTime);
+            setIsRestTimerActive(true);
+          }
+
+          return newSet;
+        });
+
+        return {
+          ...exercise,
+          sets: newSets
+        };
+      });
+
+      console.log('New exercises state:', newExercises);
+      return newExercises;
     });
   };
 
@@ -393,10 +489,116 @@ export default function WorkoutClient() {
     return getMostTargetedMuscleGroups(activeExercises);
   };
 
-  const viewWorkoutDetail = (workout: WorkoutEntry) => {
-    setSelectedWorkout(workout);
-    setShowWorkoutDetail(true);
+  const isBodyweightExercise = (exercise: Exercise) => {
+    return exercise.equipment.includes('Bodyweight') || 
+           exercise.equipment.includes('Pull-up Bar') ||
+           exercise.equipment.includes('Dip Bars') ||
+           exercise.equipment.includes('Parallel Bars') ||
+           exercise.name.toLowerCase().includes('push-up') ||
+           exercise.name.toLowerCase().includes('pull-up') ||
+           exercise.name.toLowerCase().includes('chin-up') ||
+           exercise.name.toLowerCase().includes('dip');
   };
+
+  const viewWorkoutDetail = (workout: WorkoutEntry) => {
+    // Navigate to full page workout detail instead of modal
+    router.push(`/workout/${workout.id}`);
+  };
+
+  const createCustomExercise = () => {
+    if (!customExerciseData.name.trim()) return;
+    
+    const customExercise: Exercise = {
+      id: `custom_${Date.now()}`,
+      name: customExerciseData.name,
+      category: 'Custom',
+      muscleGroups: [...customExerciseData.primaryMuscles, ...customExerciseData.secondaryMuscles],
+      equipment: customExerciseData.equipment.length > 0 ? customExerciseData.equipment : ['Bodyweight'],
+      instructions: ['Custom exercise - add your own instructions'],
+      difficulty: 'beginner',
+      caloriesPerMinute: 5,
+      description: customExerciseData.description || 'Custom exercise',
+      tips: [],
+      variations: [],
+      safetyNotes: []
+    };
+    
+    // Add to exercise database
+    exerciseDatabase.addCustomExercise(customExercise);
+    
+    // Add to workout immediately
+    addExerciseToWorkout(customExercise);
+    
+    // Reset form and close modal
+    setCustomExerciseData({
+      name: '',
+      primaryMuscles: [],
+      secondaryMuscles: [],
+      equipment: [],
+      description: ''
+    });
+    setShowCustomExerciseModal(false);
+  };
+
+  const toggleMuscleSelection = (muscle: string, type: 'primary' | 'secondary') => {
+    setCustomExerciseData(prev => {
+      const field = type === 'primary' ? 'primaryMuscles' : 'secondaryMuscles';
+      const muscles = prev[field];
+      const isSelected = muscles.includes(muscle);
+      
+      return {
+        ...prev,
+        [field]: isSelected 
+          ? muscles.filter(m => m !== muscle)
+          : [...muscles, muscle]
+      };
+    });
+  };
+
+  const toggleEquipmentSelection = (equipment: string) => {
+    setCustomExerciseData(prev => {
+      const isSelected = prev.equipment.includes(equipment);
+      return {
+        ...prev,
+        equipment: isSelected 
+          ? prev.equipment.filter(e => e !== equipment)
+          : [...prev.equipment, equipment]
+      };
+    });
+  };
+
+  // Persist activeExercises to localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('activeExercises');
+    if (saved) {
+      try {
+        setActiveExercises(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse saved exercises', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('activeExercises', JSON.stringify(activeExercises));
+  }, [activeExercises]);
+
+  // Compute quick stats for exercise settings menu
+  const exerciseStats = selectedExerciseForMenu !== null ? (() => {
+    const ex = activeExercises[selectedExerciseForMenu];
+    const completedSets = ex.sets.filter(s => !s.isWarmup && s.isCompleted);
+    if (completedSets.length === 0) {
+      return { estimated1RM: 0, repPRWeight: 0, avgWeight: 0, pct1RM: 0, pctPR: 0, pct2PR: 0 };
+    }
+    const weights = completedSets.map(s => s.weight);
+    const repPRWeight = Math.max(...weights);
+    const estimated1RM = Math.round(Math.max(...completedSets.map(s => s.weight * (1 + s.reps / 30))));
+    const avgWeight = Math.round(weights.reduce((sum, w) => sum + w, 0) / weights.length);
+    const pct1RM = estimated1RM ? Math.round(avgWeight / estimated1RM * 100) : 0;
+    const pctPR = repPRWeight ? Math.round(avgWeight / repPRWeight * 100) : 0;
+    const pct2PR = repPRWeight ? Math.round(avgWeight / (2 * repPRWeight) * 100) : 0;
+    return { estimated1RM, repPRWeight, avgWeight, pct1RM, pctPR, pct2PR };
+  })() : { estimated1RM: 0, repPRWeight: 0, avgWeight: 0, pct1RM: 0, pctPR: 0, pct2PR: 0 };
 
   if (isLoading) {
     return (
@@ -476,7 +678,7 @@ export default function WorkoutClient() {
                       </button>
                       <button
                         onClick={() => setSelectedExerciseForMenu(exerciseIndex)}
-                        className="btn btn-circle btn-ghost btn-sm"
+                        className="btn btn-circle btn-ghost"
                       >
                         <MoreVertical className="w-6 h-6" />
                       </button>
@@ -485,122 +687,118 @@ export default function WorkoutClient() {
 
                   {/* Sets */}
                   <div className="px-4 pb-4">
-                    {/* Warmup sets */}
-                    {exercise.sets.filter(set => set.isWarmup).length > 0 && (
-                      <div className="mb-4">
-                        <div className="text-sm text-base-content/60 mb-2 flex items-center gap-2">
-                          <Activity className="w-5 h-5" />
-                          Warm-up
-                        </div>
-                        {exercise.sets.filter(set => set.isWarmup).map((set, setIndex) => (
-                          <div key={set.id} className="flex items-center gap-3 p-3 bg-base-300/30 rounded-lg mb-2">
-                            <div className="w-6 h-6 rounded-full bg-warning/20 text-warning flex items-center justify-center text-xs font-semibold">
-                              W
-                            </div>
-                            
-                            <div className="text-sm">BW</div>
-                            
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-base-content/60">+</span>
-                              <span className="font-semibold">{set.weight}</span>
-                              <span className="text-sm text-base-content/60">kg</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">{set.reps}</span>
-                              <span className="text-sm text-base-content/60">reps</span>
-                            </div>
-                            
-                            <button
-                              onClick={() => completeSet(exerciseIndex, set.id)}
-                              className={`btn btn-circle ml-auto w-12 h-12 ${
-                                set.isCompleted ? 'bg-success border-success text-success-content hover:bg-success/90' : 'btn-outline'
-                              }`}
-                            >
-                              <Check className="w-6 h-6" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {/* Add Warmup Set Link */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        addSet(exerciseIndex, true);
+                      }}
+                      className="text-sm text-orange-500 mb-2 flex items-center gap-2 hover:text-orange-600"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Warm-up
+                    </button>
 
-                    {/* Working sets */}
-                    {exercise.sets.filter(set => !set.isWarmup).map((set, setIndex) => (
-                      <div key={set.id} className={`flex items-center gap-3 p-3 rounded-lg mb-2 ${
-                        set.isCompleted ? 'bg-success/10' : 'bg-base-300/30'
-                      }`}>
-                        <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-semibold">
-                          {exercise.sets.filter(s => !s.isWarmup).findIndex(s => s.id === set.id) + 1}
-                        </div>
-                        
-                        <div className="text-sm">BW</div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-base-content/60">+</span>
-                          <input
-                            type="number"
-                            value={set.weight || ''}
-                            onChange={(e) => updateSet(exerciseIndex, set.id, 'weight', parseFloat(e.target.value) || 0)}
-                            className="w-16 bg-transparent text-center font-semibold focus:outline-none focus:bg-base-100 rounded px-1"
-                            placeholder="0"
-                            disabled={set.isCompleted}
-                          />
-                          <span className="text-sm text-base-content/60">kg</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            value={set.reps || ''}
-                            onChange={(e) => updateSet(exerciseIndex, set.id, 'reps', parseInt(e.target.value) || 0)}
-                            className="w-12 bg-transparent text-center font-semibold focus:outline-none focus:bg-base-100 rounded px-1"
-                            placeholder="0"
-                            disabled={set.isCompleted}
-                          />
-                          <span className="text-sm text-base-content/60">reps</span>
-                        </div>
-                        
-                        {set.notes && (
-                          <div className="flex-1 text-sm text-base-content/60 px-2">
-                            {set.notes}
-                          </div>
-                        )}
-                        
-                        <button
-                          onClick={() => removeSet(exerciseIndex, set.id)}
-                          className="btn btn-circle btn-ghost btn-sm text-error"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                        
+                    {/* Warmup sets */}
+                    {exercise.sets.filter(set => set.isWarmup).map((set) => (
+                      <div key={set.id} className="flex items-center gap-3 p-2 rounded-lg bg-orange-500/5 mb-2">
                         <button
                           onClick={() => completeSet(exerciseIndex, set.id)}
-                          className={`btn btn-circle w-12 h-12 ${
-                            set.isCompleted ? 'bg-success border-success text-success-content hover:bg-success/90' : 'btn-outline'
-                          }`}
+                          className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${set.isCompleted ? 'bg-success text-success-content' : 'bg-base-content/10 hover:bg-base-content/20'}`}
                         >
-                          <Check className="w-6 h-6" />
+                          <Activity className={`w-4 h-4 ${set.isCompleted ? 'text-success-content' : 'text-orange-500'}`} />
+                        </button>
+                        {isBodyweightExercise(exercise) && <span className="text-sm font-semibold text-gray-500">BW</span>}
+                        <div className="flex-1 grid grid-cols-2 gap-4 items-center text-sm pr-2">
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="number"
+                              value={set.weight || ''}
+                              onChange={(e) => updateSet(exerciseIndex, set.id, 'weight', parseFloat(e.target.value) || 0)}
+                              className="w-12 bg-transparent text-center font-semibold focus:outline-none"
+                              placeholder="0"
+                              disabled={set.isCompleted}
+                            />
+                            <span className="text-base-content/60">kg</span>
+                          </div>
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="number"
+                              value={set.reps || ''}
+                              onChange={(e) => updateSet(exerciseIndex, set.id, 'reps', parseInt(e.target.value) || 0)}
+                              className="w-10 bg-transparent text-center font-semibold focus:outline-none"
+                              placeholder="0"
+                              disabled={set.isCompleted}
+                            />
+                            <span className="text-base-content/60">reps</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSelectedSetForMenu({exerciseIndex, setId: set.id})}
+                          className="btn btn-circle btn-ghost btn-xs"
+                        >
+                          <MoreVertical className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
 
-                    {/* Add Set Buttons */}
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={() => addSet(exerciseIndex, true)}
-                        className="flex-1 btn btn-outline btn-sm gap-2"
-                      >
-                        <Plus className="w-5 h-5" />
-                        Warm-up
-                      </button>
-                      <button
-                        onClick={() => addSet(exerciseIndex)}
-                        className="flex-1 btn btn-outline btn-sm gap-2"
-                      >
-                        <Plus className="w-5 h-5" />
-                        Set
-                      </button>
-                    </div>
+                    {/* Working sets */}
+                    {exercise.sets.filter(set => !set.isWarmup).map((set) => (
+                      <div key={set.id} className="flex items-center gap-3 p-2 rounded-lg bg-base-content/5 mb-2">
+                        <button
+                          onClick={() => completeSet(exerciseIndex, set.id)}
+                          className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${set.isCompleted ? 'bg-success text-success-content' : 'bg-base-content/10 hover:bg-base-content/20'}`}
+                        >
+                          <span className={`text-sm font-bold ${set.isCompleted ? 'text-success-content' : 'text-primary'}`}>
+                            {exercise.sets.filter(s => !s.isWarmup).findIndex(s => s.id === set.id) + 1}
+                          </span>
+                        </button>
+                        {isBodyweightExercise(exercise) && <span className="text-sm font-semibold text-gray-500">BW</span>}
+                        <div className="flex-1 grid grid-cols-2 gap-4 items-center text-sm pr-2">
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="number"
+                              value={set.weight || ''}
+                              onChange={(e) => updateSet(exerciseIndex, set.id, 'weight', parseFloat(e.target.value) || 0)}
+                              className="w-12 bg-transparent text-center font-semibold focus:outline-none"
+                              placeholder="0"
+                              disabled={set.isCompleted}
+                            />
+                            <span className="text-base-content/60">kg</span>
+                            {set.isPR && <span className="ml-1 text-xs font-bold text-red-500">PR!</span>}
+                          </div>
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="number"
+                              value={set.reps || ''}
+                              onChange={(e) => updateSet(exerciseIndex, set.id, 'reps', parseInt(e.target.value) || 0)}
+                              className="w-10 bg-transparent text-center font-semibold focus:outline-none"
+                              placeholder="0"
+                              disabled={set.isCompleted}
+                            />
+                            <span className="text-base-content/60">reps</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSelectedSetForMenu({exerciseIndex, setId: set.id})}
+                          className="btn btn-circle btn-ghost btn-xs"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Add Working Set Link */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        addSet(exerciseIndex);
+                      }}
+                      className="text-sm text-primary mt-2 flex items-center gap-2 hover:text-primary/80"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Set
+                    </button>
                   </div>
                 </div>
               ))}
@@ -644,7 +842,7 @@ export default function WorkoutClient() {
               <div className="grid grid-cols-3 gap-4 mb-6 text-center">
                 <div>
                   <div className="text-sm text-base-content/60">Volume</div>
-                  <div className="text-2xl font-bold">{Math.round(calculateWorkoutVolume(activeExercises))} <span className="text-sm font-normal">kg</span></div>
+                  <div className="text-2xl font-bold">{Math.round(calculateWorkoutVolume(activeExercises, userBodyweight))} <span className="text-sm font-normal">kg</span></div>
                 </div>
                 <div>
                   <div className="text-sm text-base-content/60">Heaviest</div>
@@ -725,18 +923,28 @@ export default function WorkoutClient() {
 
               {/* Category toggle */}
               <div className="p-4">
-                <div className="tabs tabs-boxed">
+                <div className="flex items-center justify-between">
+                  <div className="tabs tabs-boxed">
+                    <button
+                      className={`tab ${!showAllExercises ? 'tab-active' : ''}`}
+                      onClick={() => setShowAllExercises(false)}
+                    >
+                      Most used
+                    </button>
+                    <button
+                      className={`tab ${showAllExercises ? 'tab-active' : ''}`}
+                      onClick={() => setShowAllExercises(true)}
+                    >
+                      All exercises
+                    </button>
+                  </div>
+                  
                   <button
-                    className={`tab ${!showAllExercises ? 'tab-active' : ''}`}
-                    onClick={() => setShowAllExercises(false)}
+                    onClick={() => setShowCustomExerciseModal(true)}
+                    className="btn btn-outline btn-sm gap-2"
                   >
-                    Most used
-                  </button>
-                  <button
-                    className={`tab ${showAllExercises ? 'tab-active' : ''}`}
-                    onClick={() => setShowAllExercises(true)}
-                  >
-                    All exercises
+                    <Plus className="w-4 h-4" />
+                    Custom
                   </button>
                 </div>
               </div>
@@ -831,7 +1039,7 @@ export default function WorkoutClient() {
           {/* Exercise Settings Menu */}
           {selectedExerciseForMenu !== null && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-              <div className="w-full bg-base-100 rounded-t-xl p-4">
+              <div className="w-full bg-base-100 rounded-t-xl p-4 max-h-[80vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">
                     {activeExercises[selectedExerciseForMenu]?.name}
@@ -844,6 +1052,46 @@ export default function WorkoutClient() {
                   </button>
                 </div>
 
+                {/* Quick Stats Section */}
+                <div className="bg-base-200/30 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold">Quick stats</h4>
+                    <div className="text-sm text-base-content/60">
+                      {activeExercises[selectedExerciseForMenu]?.sets.filter(s => !s.isWarmup).length || 0} sets, {activeExercises[selectedExerciseForMenu]?.sets.filter(s => s.isCompleted && !s.isWarmup).length || 0} completed
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-sm text-base-content/60">Estimated 1RM</div>
+                      <div className="text-lg font-bold">{exerciseStats.estimated1RM} <span className="text-sm font-normal">kg</span></div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-base-content/60">Rep-PR on weight</div>
+                      <div className="text-lg font-bold">{exerciseStats.repPRWeight} <span className="text-sm font-normal">kg</span></div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-base-content/60">Average on weight</div>
+                      <div className="text-lg font-bold">{exerciseStats.avgWeight} <span className="text-sm font-normal">kg</span></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 text-center mt-4">
+                    <div>
+                      <div className="text-sm text-base-content/60">% of 1RM</div>
+                      <div className="text-lg font-bold">{exerciseStats.pct1RM}%</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-base-content/60">% of 1PR</div>
+                      <div className="text-lg font-bold">{exerciseStats.pctPR}%</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-base-content/60">% of 2PR</div>
+                      <div className="text-lg font-bold">{exerciseStats.pct2PR}%</div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <button className="w-full btn btn-outline justify-start gap-3">
                     <Upload className="w-5 h-5" />
@@ -851,13 +1099,8 @@ export default function WorkoutClient() {
                   </button>
                   
                   <button className="w-full btn btn-outline justify-start gap-3">
-                    <Eye className="w-5 h-5" />
+                    <Activity className="w-5 h-5" />
                     Reorder exercises
-                  </button>
-                  
-                  <button className="w-full btn btn-outline justify-start gap-3">
-                    <RotateCcw className="w-5 h-5" />
-                    Move set
                   </button>
                   
                   <button
@@ -871,102 +1114,185 @@ export default function WorkoutClient() {
                     Remove exercise
                   </button>
                 </div>
-                          </div>
-          </div>
-        )}
-
-        {/* Workout Detail Modal */}
-        {showWorkoutDetail && selectedWorkout && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-base-100 rounded-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold">{selectedWorkout.name}</h3>
-                <button
-                  onClick={() => setShowWorkoutDetail(false)}
-                  className="btn btn-circle btn-ghost btn-sm"
-                >
-                  <X className="w-6 h-6" />
-                </button>
               </div>
+            </div>
+          )}
 
-              <div className="space-y-4">
-                <div className="bg-base-200/50 rounded-lg p-4">
-                  <div className="text-sm text-base-content/60 mb-2">
-                    {new Date(selectedWorkout.timestamp).toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </div>
-                  <div className="text-sm text-base-content/60">
-                    Duration: {selectedWorkout.duration} min • {selectedWorkout.calories} cal
-                  </div>
+          {/* Set Menu */}
+          {selectedSetForMenu && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+              <div className="w-full bg-base-100 rounded-t-xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Set Options</h3>
+                  <button
+                    onClick={() => setSelectedSetForMenu(null)}
+                    className="btn btn-circle btn-ghost btn-sm"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
                 </div>
 
-                {/* Exercise List */}
-                {selectedWorkout.exercises && selectedWorkout.exercises.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold mb-3">Exercises</h4>
-                    <div className="space-y-3">
-                      {selectedWorkout.exercises.map((exercise, index) => (
-                        <div key={index} className="bg-base-200/30 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xl font-semibold text-primary">?</span>
-                            <h5 className="font-medium">{exercise.name}</h5>
-                          </div>
-                          <div className="text-sm text-base-content/70">
-                            {exercise.sets && (
-                              <div>Sets: {exercise.sets}</div>
-                            )}
-                            {exercise.reps && (
-                              <div>Reps: {exercise.reps}</div>
-                            )}
-                            {exercise.weight && (
-                              <div>Weight: {exercise.weight}kg</div>
-                            )}
-                            {exercise.duration && (
-                              <div>Duration: {exercise.duration} min</div>
-                            )}
-                            {exercise.distance && (
-                              <div>Distance: {exercise.distance}km</div>
-                            )}
-                          </div>
-                        </div>
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => {
+                      // Add note functionality here
+                      setSelectedSetForMenu(null);
+                    }}
+                    className="w-full btn btn-outline justify-start gap-3"
+                  >
+                    <span className="text-xl">💬</span>
+                    Add comment
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      if (selectedSetForMenu) {
+                        removeSet(selectedSetForMenu.exerciseIndex, selectedSetForMenu.setId);
+                        setSelectedSetForMenu(null);
+                      }
+                    }}
+                    className="w-full btn btn-outline btn-error justify-start gap-3"
+                  >
+                    <X className="w-5 h-5" />
+                    Remove set
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Exercise Modal */}
+          {showCustomExerciseModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-base-100 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold">Create Custom Exercise</h3>
+                  <button
+                    onClick={() => setShowCustomExerciseModal(false)}
+                    className="btn btn-circle btn-ghost btn-sm"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Exercise Name */}
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">Exercise Name *</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Reverse Fly with Cables"
+                      className="input input-bordered"
+                      value={customExerciseData.name}
+                      onChange={(e) => setCustomExerciseData(prev => ({...prev, name: e.target.value}))}
+                    />
+                  </div>
+
+                  {/* Primary Muscles */}
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">Primary Muscles *</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {muscleGroups.map(muscle => (
+                        <button
+                          key={muscle}
+                          onClick={() => toggleMuscleSelection(muscle, 'primary')}
+                          className={`badge badge-lg cursor-pointer ${
+                            customExerciseData.primaryMuscles.includes(muscle)
+                              ? 'badge-primary'
+                              : 'badge-outline'
+                          }`}
+                        >
+                          {muscle}
+                        </button>
                       ))}
                     </div>
                   </div>
-                )}
 
-                {/* Stats Summary */}
-                <div className="bg-base-200/30 rounded-lg p-4">
-                  <h4 className="font-semibold mb-3">Summary</h4>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <div className="text-2xl font-bold">{selectedWorkout.exercises?.length || 0}</div>
-                      <div className="text-sm text-base-content/60">Exercises</div>
+                  {/* Secondary Muscles */}
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">Secondary Muscles</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {muscleGroups.map(muscle => (
+                        <button
+                          key={muscle}
+                          onClick={() => toggleMuscleSelection(muscle, 'secondary')}
+                          className={`badge badge-lg cursor-pointer ${
+                            customExerciseData.secondaryMuscles.includes(muscle)
+                              ? 'badge-secondary'
+                              : 'badge-outline'
+                          }`}
+                        >
+                          {muscle}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold">{selectedWorkout.duration}</div>
-                      <div className="text-sm text-base-content/60">Minutes</div>
+                  </div>
+
+                  {/* Equipment */}
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">Equipment</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {equipmentTypes.map(equipment => (
+                        <button
+                          key={equipment}
+                          onClick={() => toggleEquipmentSelection(equipment)}
+                          className={`badge badge-lg cursor-pointer ${
+                            customExerciseData.equipment.includes(equipment)
+                              ? 'badge-accent'
+                              : 'badge-outline'
+                          }`}
+                        >
+                          {equipment}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold">{selectedWorkout.calories}</div>
-                      <div className="text-sm text-base-content/60">Calories</div>
-                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">Description</span>
+                    </label>
+                    <textarea
+                      className="textarea textarea-bordered"
+                      placeholder="Describe how to perform this exercise..."
+                      rows={3}
+                      value={customExerciseData.description}
+                      onChange={(e) => setCustomExerciseData(prev => ({...prev, description: e.target.value}))}
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={() => setShowCustomExerciseModal(false)}
+                      className="btn btn-outline flex-1"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={createCustomExercise}
+                      disabled={!customExerciseData.name.trim() || customExerciseData.primaryMuscles.length === 0}
+                      className="btn btn-primary flex-1 gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create & Add
+                    </button>
                   </div>
                 </div>
-
-                {selectedWorkout.notes && (
-                  <div className="bg-base-200/30 rounded-lg p-4">
-                    <h4 className="font-semibold mb-2">Notes</h4>
-                    <p className="text-sm text-base-content/70">{selectedWorkout.notes}</p>
-                  </div>
-                )}
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          
       </div>
     </AppLayout>
   );

@@ -98,11 +98,16 @@ export function formatWorkoutDuration(milliseconds: number): string {
 }
 
 // Calculate total volume for a workout
-export function calculateWorkoutVolume(exercises: any[]): number {
+export function calculateWorkoutVolume(exercises: any[], userBodyweight: number = 70): number {
   return exercises.reduce((total, exercise) => {
     const exerciseVolume = exercise.sets
       .filter((set: any) => set.isCompleted && !set.isWarmup)
-      .reduce((setTotal: number, set: any) => setTotal + (set.weight * set.reps), 0);
+      .reduce((setTotal: number, set: any) => {
+        const baseWeight = exercise.equipment?.includes('Bodyweight') ? userBodyweight : 0;
+        const setWeight = set.weight || 0;
+        const totalWeight = baseWeight + setWeight;
+        return setTotal + (totalWeight * set.reps);
+      }, 0);
     return total + exerciseVolume;
   }, 0);
 }
@@ -126,13 +131,13 @@ export function calculateWorkoutReps(exercises: any[]): number {
 }
 
 // Estimate calories burned during workout
-export function estimateWorkoutCalories(exercises: any[], durationMinutes: number): number {
+export function estimateWorkoutCalories(exercises: any[], durationMinutes: number, userBodyweight: number = 70): number {
   // Base calculation: average of 6-8 calories per minute for strength training
   const baseCaloriesPerMinute = 7;
   const baseCalories = durationMinutes * baseCaloriesPerMinute;
   
   // Adjust based on intensity (volume and sets)
-  const totalVolume = calculateWorkoutVolume(exercises);
+  const totalVolume = calculateWorkoutVolume(exercises, userBodyweight);
   const totalSets = calculateWorkoutSets(exercises);
   
   // Intensity multiplier based on volume (rough estimation)

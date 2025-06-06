@@ -53,68 +53,57 @@ export default function MuscleGroupVisualizer({ targetedMuscles, className = "" 
     <div className={`${className}`}>
       <div className="text-center">
         <h4 className="text-sm font-medium text-base-content/60 mb-3">Targeted Muscles</h4>
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4">
+          {/* Front silhouette */}
           <div className="relative w-32 h-48 bg-base-300/20 rounded-2xl border border-base-300/30 overflow-hidden">
-            {/* Simple body outline */}
             <svg viewBox="0 0 80 120" className="w-full h-full">
               {/* Head */}
               <circle cx="40" cy="12" r="8" fill="currentColor" opacity="0.1" />
-              
               {/* Torso */}
               <rect x="25" y="20" width="30" height="40" rx="8" fill="currentColor" opacity="0.1" />
-              
               {/* Arms */}
               <rect x="12" y="25" width="8" height="25" rx="4" fill="currentColor" opacity="0.1" />
               <rect x="60" y="25" width="8" height="25" rx="4" fill="currentColor" opacity="0.1" />
-              
               {/* Legs */}
               <rect x="28" y="62" width="10" height="35" rx="5" fill="currentColor" opacity="0.1" />
               <rect x="42" y="62" width="10" height="35" rx="5" fill="currentColor" opacity="0.1" />
-              
-              {/* Highlighted muscles */}
+              {/* Front highlights */}
               {displayMuscles.includes('Chest') && (
                 <rect x="30" y="28" width="20" height="12" rx="4" fill="#ef4444" opacity="0.7" />
               )}
-              
               {displayMuscles.includes('Shoulders') && (
                 <>
                   <circle cx="22" cy="27" r="6" fill="#ef4444" opacity="0.7" />
                   <circle cx="58" cy="27" r="6" fill="#ef4444" opacity="0.7" />
                 </>
               )}
-              
-              {(displayMuscles.includes('Arms') || displayMuscles.includes('Biceps') || displayMuscles.includes('Triceps')) && (
-                <>
-                  <rect x="13" y="30" width="6" height="15" rx="3" fill="#ef4444" opacity="0.7" />
-                  <rect x="61" y="30" width="6" height="15" rx="3" fill="#ef4444" opacity="0.7" />
-                </>
-              )}
-              
-              {(displayMuscles.includes('Back') || displayMuscles.includes('Lats') || displayMuscles.includes('Upper Back')) && (
+            </svg>
+          </div>
+          {/* Back silhouette */}
+          <div className="relative w-32 h-48 bg-base-300/20 rounded-2xl border border-base-300/30 overflow-hidden">
+            <svg viewBox="0 0 80 120" className="w-full h-full">
+              {/* Head */}
+              <circle cx="40" cy="12" r="8" fill="currentColor" opacity="0.1" />
+              {/* Torso */}
+              <rect x="25" y="20" width="30" height="40" rx="8" fill="currentColor" opacity="0.1" />
+              {/* Arms */}
+              <rect x="12" y="25" width="8" height="25" rx="4" fill="currentColor" opacity="0.1" />
+              <rect x="60" y="25" width="8" height="25" rx="4" fill="currentColor" opacity="0.1" />
+              {/* Legs */}
+              <rect x="28" y="62" width="10" height="35" rx="5" fill="currentColor" opacity="0.1" />
+              <rect x="42" y="62" width="10" height="35" rx="5" fill="currentColor" opacity="0.1" />
+              {/* Back highlights */}
+              {(displayMuscles.includes('Back') || displayMuscles.includes('Upper Back') || displayMuscles.includes('Lats') || displayMuscles.includes('Lower Back')) && (
                 <rect x="25" y="22" width="30" height="25" rx="8" fill="#ef4444" opacity="0.5" />
               )}
-              
-              {(displayMuscles.includes('Core') || displayMuscles.includes('Abs')) && (
-                <rect x="32" y="42" width="16" height="18" rx="4" fill="#ef4444" opacity="0.7" />
-              )}
-              
-              {(displayMuscles.includes('Legs') || displayMuscles.includes('Quads') || displayMuscles.includes('Hamstrings') || displayMuscles.includes('Glutes')) && (
+              {displayMuscles.includes('Triceps') && (
                 <>
-                  <rect x="28" y="62" width="10" height="35" rx="5" fill="#ef4444" opacity="0.7" />
-                  <rect x="42" y="62" width="10" height="35" rx="5" fill="#ef4444" opacity="0.7" />
+                  <rect x="12" y="25" width="8" height="25" rx="4" fill="#ef4444" opacity="0.7" />
+                  <rect x="60" y="25" width="8" height="25" rx="4" fill="#ef4444" opacity="0.7" />
                 </>
               )}
             </svg>
           </div>
-        </div>
-        
-        {/* Muscle labels */}
-        <div className="flex flex-wrap justify-center gap-2 mt-3">
-          {displayMuscles.map(muscle => (
-            <span key={muscle} className="badge badge-primary badge-sm">
-              {muscle}
-            </span>
-          ))}
         </div>
       </div>
     </div>

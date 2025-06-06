@@ -188,7 +188,6 @@ export interface ExerciseSet {
   id: string;
   workoutId: string;
   exerciseId: string;
-  sets?: number;
   reps?: number;
   weight?: number;
   duration?: number;
@@ -196,6 +195,8 @@ export interface ExerciseSet {
   restTime?: number;
   notes?: string;
   timestamp: number;
+  isCompleted?: boolean;
+  isWarmup?: boolean;
 }
 
 // Navigation types for Next.js

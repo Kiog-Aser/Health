@@ -57,7 +57,64 @@ class ExerciseDatabase {
         safetyNotes: ['Use a spotter', 'Don\'t bounce bar off chest', 'Use proper grip width']
       },
       {
-        id: 'chest-dumbbell-flyes',
+        id: 'chest-incline-press',
+        name: 'Incline Bench Press',
+        category: 'Chest',
+        muscleGroups: ['Upper Chest', 'Triceps', 'Shoulders'],
+        equipment: ['Barbell', 'Incline Bench'],
+        instructions: [
+          'Set bench to 30-45 degree incline',
+          'Lie back with feet flat on floor',
+          'Grip barbell slightly wider than shoulders',
+          'Press bar from upper chest to arms extended'
+        ],
+        difficulty: 'intermediate',
+        caloriesPerMinute: 6,
+        description: 'Targets the upper portion of the chest with an inclined angle.',
+        tips: ['Don\'t set incline too steep', 'Touch bar to upper chest', 'Keep core tight'],
+        variations: ['Dumbbell incline press', 'Incline dumbbell flyes'],
+        safetyNotes: ['Use proper spotter', 'Control the weight']
+      },
+      {
+        id: 'chest-dumbbell-press',
+        name: 'Dumbbell Press',
+        category: 'Chest',
+        muscleGroups: ['Chest', 'Triceps', 'Shoulders'],
+        equipment: ['Dumbbells', 'Bench'],
+        instructions: [
+          'Lie on bench holding dumbbells at chest level',
+          'Press dumbbells up and together',
+          'Lower with control to chest level',
+          'Keep wrists straight throughout'
+        ],
+        difficulty: 'intermediate',
+        caloriesPerMinute: 6,
+        description: 'A versatile chest exercise that allows for greater range of motion.',
+        tips: ['Squeeze dumbbells together at top', 'Control the descent', 'Keep feet planted'],
+        variations: ['Incline dumbbell press', 'Single-arm press'],
+        safetyNotes: ['Don\'t let dumbbells drift back', 'Use spotter for heavy weights']
+      },
+      {
+        id: 'chest-dips',
+        name: 'Dips',
+        category: 'Chest',
+        muscleGroups: ['Chest', 'Triceps', 'Shoulders'],
+        equipment: ['Dip Bars', 'Parallel Bars'],
+        instructions: [
+          'Position yourself between parallel bars',
+          'Grip bars and lift body until arms are straight',
+          'Lower body by bending elbows until shoulders are below elbows',
+          'Push back up to starting position'
+        ],
+        difficulty: 'intermediate',
+        caloriesPerMinute: 8,
+        description: 'A compound bodyweight exercise that targets chest, triceps, and shoulders.',
+        tips: ['Lean forward for chest emphasis', 'Control the descent', 'Keep shoulders down'],
+        variations: ['Assisted dips', 'Weighted dips', 'Ring dips'],
+        safetyNotes: ['Don\'t go too low if you feel shoulder pain', 'Build up strength gradually']
+      },
+      {
+        id: 'chest-flyes',
         name: 'Dumbbell Flyes',
         category: 'Chest',
         muscleGroups: ['Chest', 'Shoulders'],
@@ -74,27 +131,6 @@ class ExerciseDatabase {
         tips: ['Focus on the squeeze at the top', 'Control the weight', 'Don\'t go too low'],
         variations: ['Incline flyes', 'Cable flyes', 'Pec deck'],
         safetyNotes: ['Don\'t use too heavy weight', 'Maintain control throughout range of motion']
-      },
-
-      // BAR DIP
-      {
-        id: 'bar-dip',
-        name: 'Bar Dip',
-        category: 'Chest',
-        muscleGroups: ['Chest', 'Triceps', 'Shoulders'],
-        equipment: ['Dip Bar', 'Parallel Bars'],
-        instructions: [
-          'Position yourself between parallel bars',
-          'Grip bars and lift body until arms are straight',
-          'Lower body by bending elbows until shoulders are below elbows',
-          'Push back up to starting position'
-        ],
-        difficulty: 'intermediate',
-        caloriesPerMinute: 8,
-        description: 'A compound bodyweight exercise that targets chest, triceps, and shoulders.',
-        tips: ['Lean forward for chest emphasis', 'Control the descent', 'Keep shoulders down'],
-        variations: ['Assisted dips', 'Weighted dips', 'Ring dips'],
-        safetyNotes: ['Don\'t go too low if you feel shoulder pain', 'Build up strength gradually']
       },
 
       // BACK EXERCISES
@@ -118,10 +154,29 @@ class ExerciseDatabase {
         safetyNotes: ['Don\'t drop from the bar', 'Build up gradually']
       },
       {
+        id: 'back-chin-up',
+        name: 'Chin-ups',
+        category: 'Back',
+        muscleGroups: ['Latissimus Dorsi', 'Biceps', 'Rhomboids'],
+        equipment: ['Pull-up Bar'],
+        instructions: [
+          'Hang from bar with palms facing toward you',
+          'Pull body up until chin clears the bar',
+          'Lower with control to full arm extension',
+          'Keep core engaged throughout'
+        ],
+        difficulty: 'intermediate',
+        caloriesPerMinute: 10,
+        description: 'A variation of pull-ups with greater bicep involvement.',
+        tips: ['Focus on pulling with lats', 'Control the negative', 'Keep shoulders down'],
+        variations: ['Neutral grip chin-ups', 'Weighted chin-ups'],
+        safetyNotes: ['Progress gradually', 'Don\'t kip or swing']
+      },
+      {
         id: 'back-bent-over-row',
         name: 'Bent Over Row',
         category: 'Back',
-        muscleGroups: ['Latissimus Dorsi', 'Rhomboids', 'Biceps'],
+        muscleGroups: ['Latissimus Dorsi', 'Rhomboids', 'Biceps', 'Rear Delts'],
         equipment: ['Barbell'],
         instructions: [
           'Stand with feet hip-width apart holding barbell',
@@ -136,11 +191,68 @@ class ExerciseDatabase {
         variations: ['Dumbbell rows', 'T-bar rows', 'Cable rows'],
         safetyNotes: ['Maintain neutral spine', 'Don\'t round back']
       },
+      {
+        id: 'back-dumbbell-row',
+        name: 'Dumbbell Row',
+        category: 'Back',
+        muscleGroups: ['Latissimus Dorsi', 'Rhomboids', 'Biceps'],
+        equipment: ['Dumbbells', 'Bench'],
+        instructions: [
+          'Place one knee and hand on bench for support',
+          'Hold dumbbell in opposite hand, arm extended',
+          'Pull dumbbell to hip level',
+          'Lower with control'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 6,
+        description: 'A unilateral back exercise that allows focus on each side.',
+        tips: ['Keep back flat', 'Pull elbow back, not out', 'Squeeze at the top'],
+        variations: ['Two-arm dumbbell row', 'Chest-supported row'],
+        safetyNotes: ['Don\'t twist torso', 'Control the weight']
+      },
+      {
+        id: 'back-lat-pulldown',
+        name: 'Lat Pulldown',
+        category: 'Back',
+        muscleGroups: ['Latissimus Dorsi', 'Biceps', 'Rhomboids'],
+        equipment: ['Cable Machine', 'Lat Pulldown Bar'],
+        instructions: [
+          'Sit at lat pulldown machine with thighs secured',
+          'Grip bar wider than shoulder width',
+          'Pull bar down to upper chest',
+          'Control the weight back up'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 6,
+        description: 'A machine exercise that mimics the pull-up motion.',
+        tips: ['Lean back slightly', 'Pull to chest, not behind neck', 'Focus on lats'],
+        variations: ['Close-grip pulldown', 'Reverse-grip pulldown'],
+        safetyNotes: ['Don\'t pull behind neck', 'Control the eccentric']
+      },
+      {
+        id: 'back-deadlift',
+        name: 'Deadlift',
+        category: 'Back',
+        muscleGroups: ['Hamstrings', 'Glutes', 'Lower Back', 'Traps'],
+        equipment: ['Barbell'],
+        instructions: [
+          'Stand with feet hip-width apart, bar over mid-foot',
+          'Hinge at hips and knees to grip bar',
+          'Lift by driving hips forward and standing tall',
+          'Lower bar with control back to ground'
+        ],
+        difficulty: 'advanced',
+        caloriesPerMinute: 8,
+        description: 'The king of all exercises - builds total body strength.',
+        tips: ['Keep bar close to body', 'Drive hips forward', 'Chest up'],
+        variations: ['Romanian deadlift', 'Sumo deadlift', 'Trap bar deadlift'],
+        safetyNotes: ['Perfect form is crucial', 'Start light and progress slowly']
+      },
 
       // LEG EXERCISES
       {
         id: 'legs-squat',
-        name: 'Squats',
+        name: 'Bodyweight Squat',
         category: 'Legs',
         muscleGroups: ['Quadriceps', 'Glutes', 'Hamstrings'],
         equipment: ['Bodyweight'],
@@ -152,29 +264,48 @@ class ExerciseDatabase {
         ],
         difficulty: 'beginner',
         caloriesPerMinute: 8,
-        description: 'The king of lower body exercises targeting multiple muscle groups.',
+        description: 'The fundamental lower body movement pattern.',
         tips: ['Keep weight on heels', 'Go below parallel if possible', 'Drive through heels'],
-        variations: ['Goblet squats', 'Front squats', 'Bulgarian split squats'],
+        variations: ['Jump squats', 'Pistol squats', 'Bulgarian split squats'],
         safetyNotes: ['Don\'t let knees cave in', 'Maintain neutral spine']
       },
       {
-        id: 'legs-deadlift',
-        name: 'Deadlift',
+        id: 'legs-back-squat',
+        name: 'Back Squat',
         category: 'Legs',
-        muscleGroups: ['Hamstrings', 'Glutes', 'Lower Back'],
-        equipment: ['Barbell'],
+        muscleGroups: ['Quadriceps', 'Glutes', 'Hamstrings'],
+        equipment: ['Barbell', 'Squat Rack'],
         instructions: [
-          'Stand with feet hip-width apart, bar over mid-foot',
-          'Hinge at hips and knees to grip bar',
-          'Lift by driving hips forward and standing tall',
-          'Lower bar with control back to ground'
+          'Position barbell on upper back in squat rack',
+          'Step back and position feet shoulder-width apart',
+          'Lower body by bending knees and hips',
+          'Drive through heels to return to standing'
         ],
         difficulty: 'intermediate',
         caloriesPerMinute: 8,
-        description: 'A fundamental movement pattern that builds posterior chain strength.',
-        tips: ['Keep bar close to body', 'Drive hips forward', 'Chest up'],
-        variations: ['Romanian deadlift', 'Sumo deadlift', 'Trap bar deadlift'],
-        safetyNotes: ['Perfect form is crucial', 'Start light and progress slowly']
+        description: 'The king of lower body exercises with added resistance.',
+        tips: ['Keep chest up', 'Break at hips first', 'Drive knees out'],
+        variations: ['Front squat', 'Goblet squat', 'Box squat'],
+        safetyNotes: ['Use safety bars', 'Don\'t round back', 'Proper rack height']
+      },
+      {
+        id: 'legs-front-squat',
+        name: 'Front Squat',
+        category: 'Legs',
+        muscleGroups: ['Quadriceps', 'Glutes', 'Core'],
+        equipment: ['Barbell', 'Squat Rack'],
+        instructions: [
+          'Position barbell on front of shoulders',
+          'Keep elbows high and chest up',
+          'Lower into squat position',
+          'Drive through heels to stand'
+        ],
+        difficulty: 'advanced',
+        caloriesPerMinute: 8,
+        description: 'A squat variation that emphasizes the quads and core.',
+        tips: ['Keep elbows high', 'Stay upright', 'Flexible wrists help'],
+        variations: ['Cross-arm front squat', 'Dumbbell front squat'],
+        safetyNotes: ['Master back squat first', 'Use proper front rack position']
       },
       {
         id: 'legs-lunges',
@@ -195,26 +326,43 @@ class ExerciseDatabase {
         variations: ['Reverse lunges', 'Walking lunges', 'Lateral lunges'],
         safetyNotes: ['Control the movement', 'Don\'t let front knee drift inward']
       },
-
-      // ARM EXERCISES
       {
-        id: 'arms-barbell-curl',
-        name: 'Barbell Curl',
-        category: 'Arms',
-        muscleGroups: ['Biceps', 'Forearms'],
-        equipment: ['Barbell'],
+        id: 'legs-bulgarian-split-squat',
+        name: 'Bulgarian Split Squat',
+        category: 'Legs',
+        muscleGroups: ['Quadriceps', 'Glutes', 'Hamstrings'],
+        equipment: ['Bodyweight', 'Bench'],
         instructions: [
-          'Stand with feet hip-width apart holding barbell with underhand grip',
-          'Keep elbows close to torso throughout movement',
-          'Curl the weight up by contracting biceps',
-          'Lower with control back to starting position'
+          'Stand 2-3 feet in front of bench',
+          'Place rear foot on bench behind you',
+          'Lower front leg until thigh is parallel to ground',
+          'Push through front heel to return to start'
+        ],
+        difficulty: 'intermediate',
+        caloriesPerMinute: 7,
+        description: 'A challenging single-leg exercise for strength and balance.',
+        tips: ['Keep most weight on front leg', 'Don\'t push off back foot', 'Stay upright'],
+        variations: ['Weighted Bulgarian split squat', 'Jumping Bulgarian split squat'],
+        safetyNotes: ['Find proper foot position first', 'Control the movement']
+      },
+      {
+        id: 'legs-leg-press',
+        name: 'Leg Press',
+        category: 'Legs',
+        muscleGroups: ['Quadriceps', 'Glutes', 'Hamstrings'],
+        equipment: ['Leg Press Machine'],
+        instructions: [
+          'Sit in leg press machine with back against pad',
+          'Place feet on platform shoulder-width apart',
+          'Lower weight by bending knees to 90 degrees',
+          'Press weight back up through heels'
         ],
         difficulty: 'beginner',
-        caloriesPerMinute: 5,
-        description: 'A classic bicep isolation exercise using a barbell.',
-        tips: ['Don\'t swing the weight', 'Keep elbows stationary', 'Full range of motion'],
-        variations: ['Dumbbell curls', 'Hammer curls', 'Preacher curls'],
-        safetyNotes: ['Don\'t use momentum', 'Control the negative']
+        caloriesPerMinute: 6,
+        description: 'A machine exercise that safely loads the leg muscles.',
+        tips: ['Don\'t let knees cave in', 'Full range of motion', 'Control the weight'],
+        variations: ['Single-leg press', 'High foot position', 'Low foot position'],
+        safetyNotes: ['Don\'t let knees go too far forward', 'Keep back against pad']
       },
 
       // SHOULDER EXERCISES
@@ -227,39 +375,77 @@ class ExerciseDatabase {
         instructions: [
           'Stand with feet hip-width apart holding barbell at shoulder height',
           'Press bar straight up overhead',
-          'Lower with control back to shoulders',
-          'Keep core engaged throughout'
+          'Lock out arms at the top',
+          'Lower bar back to shoulder height'
         ],
         difficulty: 'intermediate',
         caloriesPerMinute: 6,
-        description: 'A compound movement that builds shoulder and core strength.',
-        tips: ['Keep bar path straight', 'Engage glutes', 'Don\'t arch back excessively'],
-        variations: ['Dumbbell press', 'Seated press', 'Pike push-ups'],
-        safetyNotes: ['Warm up shoulders thoroughly', 'Don\'t press behind neck']
+        description: 'A fundamental overhead pressing movement.',
+        tips: ['Keep core tight', 'Press straight up', 'Don\'t arch back excessively'],
+        variations: ['Dumbbell press', 'Seated press', 'Push press'],
+        safetyNotes: ['Maintain neutral spine', 'Use appropriate weight']
       },
       {
-        id: 'shoulders-lateral-raise',
+        id: 'shoulders-dumbbell-press',
+        name: 'Dumbbell Shoulder Press',
+        category: 'Shoulders',
+        muscleGroups: ['Shoulders', 'Triceps'],
+        equipment: ['Dumbbells'],
+        instructions: [
+          'Stand or sit holding dumbbells at shoulder height',
+          'Press dumbbells up and slightly together',
+          'Lower with control back to shoulder height',
+          'Keep core engaged throughout'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 5,
+        description: 'A versatile shoulder exercise with independent arm movement.',
+        tips: ['Don\'t let dumbbells drift forward', 'Full range of motion', 'Control the weight'],
+        variations: ['Seated dumbbell press', 'Single-arm press', 'Arnold press'],
+        safetyNotes: ['Start with lighter weight', 'Don\'t lock elbows aggressively']
+      },
+      {
+        id: 'shoulders-lateral-raises',
         name: 'Lateral Raises',
         category: 'Shoulders',
-        muscleGroups: ['Shoulders'],
+        muscleGroups: ['Side Delts'],
         equipment: ['Dumbbells'],
         instructions: [
           'Stand holding dumbbells at sides',
-          'Raise arms out to sides until parallel to floor',
+          'Raise arms out to sides until parallel to ground',
           'Lower with control back to starting position',
           'Keep slight bend in elbows'
         ],
         difficulty: 'beginner',
         caloriesPerMinute: 4,
-        description: 'An isolation exercise that targets the side deltoids.',
-        tips: ['Use lighter weight', 'Control the movement', 'Don\'t swing'],
-        variations: ['Front raises', 'Rear delt flyes', 'Arnold press'],
-        safetyNotes: ['Start with light weight', 'Don\'t raise above shoulder height']
+        description: 'An isolation exercise targeting the side deltoids.',
+        tips: ['Lead with pinkies', 'Don\'t swing the weight', 'Control the negative'],
+        variations: ['Cable lateral raises', 'Leaning lateral raises'],
+        safetyNotes: ['Use appropriate weight', 'Don\'t raise above shoulder height']
+      },
+      {
+        id: 'shoulders-rear-delt-flyes',
+        name: 'Rear Delt Flyes',
+        category: 'Shoulders',
+        muscleGroups: ['Rear Delts', 'Rhomboids'],
+        equipment: ['Dumbbells'],
+        instructions: [
+          'Bend over at hips holding dumbbells',
+          'Raise arms out to sides, squeezing shoulder blades',
+          'Lower with control',
+          'Keep slight bend in elbows'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 4,
+        description: 'Targets the often-neglected rear deltoids.',
+        tips: ['Squeeze shoulder blades', 'Don\'t use momentum', 'Keep torso stable'],
+        variations: ['Cable reverse flyes', 'Bent-over reverse flyes'],
+        safetyNotes: ['Use light weight', 'Maintain neutral spine']
       },
 
       // ARM EXERCISES
       {
-        id: 'arms-bicep-curl',
+        id: 'arms-bicep-curls',
         name: 'Bicep Curls',
         category: 'Arms',
         muscleGroups: ['Biceps'],
@@ -268,14 +454,33 @@ class ExerciseDatabase {
           'Stand holding dumbbells with arms at sides',
           'Curl weights up by flexing biceps',
           'Squeeze at the top',
-          'Lower with control to starting position'
+          'Lower with control'
         ],
         difficulty: 'beginner',
-        caloriesPerMinute: 3,
-        description: 'A classic isolation exercise for building bicep strength and size.',
-        tips: ['Keep elbows stationary', 'Control the negative', 'Full range of motion'],
-        variations: ['Hammer curls', 'Preacher curls', 'Cable curls'],
-        safetyNotes: ['Don\'t swing the weight', 'Use proper weight selection']
+        caloriesPerMinute: 4,
+        description: 'The classic bicep building exercise.',
+        tips: ['Don\'t swing the weight', 'Full range of motion', 'Control the negative'],
+        variations: ['Hammer curls', 'Concentration curls', 'Barbell curls'],
+        safetyNotes: ['Don\'t use momentum', 'Keep elbows at sides']
+      },
+      {
+        id: 'arms-hammer-curls',
+        name: 'Hammer Curls',
+        category: 'Arms',
+        muscleGroups: ['Biceps', 'Forearms'],
+        equipment: ['Dumbbells'],
+        instructions: [
+          'Stand holding dumbbells with neutral grip',
+          'Curl weights up keeping wrists neutral',
+          'Squeeze at the top',
+          'Lower with control'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 4,
+        description: 'A bicep variation that also targets the forearms.',
+        tips: ['Keep wrists straight', 'Don\'t rotate dumbbells', 'Control the movement'],
+        variations: ['Cross-body hammer curls', 'Rope hammer curls'],
+        safetyNotes: ['Use appropriate weight', 'Don\'t swing']
       },
       {
         id: 'arms-tricep-dips',
@@ -284,17 +489,55 @@ class ExerciseDatabase {
         muscleGroups: ['Triceps', 'Shoulders'],
         equipment: ['Bodyweight', 'Bench'],
         instructions: [
-          'Sit on edge of bench with hands beside hips',
-          'Slide forward and lower body by bending elbows',
-          'Push back up to starting position',
-          'Keep legs extended or bent for easier variation'
+          'Sit on edge of bench with hands next to hips',
+          'Slide forward off bench supporting weight with arms',
+          'Lower body by bending elbows',
+          'Push back up to starting position'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 6,
+        description: 'A bodyweight exercise for tricep development.',
+        tips: ['Keep elbows close to body', 'Don\'t go too low', 'Control the movement'],
+        variations: ['Feet elevated dips', 'Ring dips', 'Weighted dips'],
+        safetyNotes: ['Don\'t go below 90 degrees', 'Stop if shoulders hurt']
+      },
+      {
+        id: 'arms-tricep-extensions',
+        name: 'Tricep Extensions',
+        category: 'Arms',
+        muscleGroups: ['Triceps'],
+        equipment: ['Dumbbells'],
+        instructions: [
+          'Stand holding dumbbell overhead with both hands',
+          'Lower weight behind head by bending elbows',
+          'Keep upper arms stationary',
+          'Extend back to starting position'
+        ],
+        difficulty: 'beginner',
+        caloriesPerMinute: 4,
+        description: 'An isolation exercise for tricep development.',
+        tips: ['Keep elbows close to head', 'Control the weight', 'Full range of motion'],
+        variations: ['Lying tricep extensions', 'Cable extensions'],
+        safetyNotes: ['Start with light weight', 'Don\'t let elbows flare']
+      },
+      {
+        id: 'arms-close-grip-bench',
+        name: 'Close-Grip Bench Press',
+        category: 'Arms',
+        muscleGroups: ['Triceps', 'Chest', 'Shoulders'],
+        equipment: ['Barbell', 'Bench'],
+        instructions: [
+          'Lie on bench with hands closer than shoulder width',
+          'Lower bar to chest keeping elbows close',
+          'Press bar back up',
+          'Focus on tricep engagement'
         ],
         difficulty: 'intermediate',
         caloriesPerMinute: 6,
-        description: 'A bodyweight exercise that effectively targets the triceps.',
-        tips: ['Keep body close to bench', 'Don\'t go too low', 'Control the movement'],
-        variations: ['Chair dips', 'Ring dips', 'Parallel bar dips'],
-        safetyNotes: ['Don\'t go below 90 degrees at elbow', 'Stop if you feel shoulder pain']
+        description: 'A compound movement emphasizing tricep development.',
+        tips: ['Keep elbows close to body', 'Don\'t grip too narrow', 'Control the weight'],
+        variations: ['Close-grip dumbbell press', 'Close-grip pushups'],
+        safetyNotes: ['Use spotter', 'Don\'t grip too narrow']
       },
 
       // CORE EXERCISES
@@ -307,93 +550,72 @@ class ExerciseDatabase {
         instructions: [
           'Start in push-up position',
           'Lower to forearms keeping body straight',
-          'Hold position engaging core muscles',
-          'Breathe normally while maintaining position'
+          'Hold position engaging core',
+          'Breathe normally throughout'
         ],
         difficulty: 'beginner',
         caloriesPerMinute: 5,
-        description: 'An isometric exercise that builds core stability and strength.',
-        tips: ['Keep hips level', 'Engage glutes', 'Don\'t hold breath'],
+        description: 'An isometric core strengthening exercise.',
+        tips: ['Keep body straight', 'Don\'t let hips sag', 'Engage glutes'],
         variations: ['Side plank', 'Plank with leg lifts', 'Plank up-downs'],
-        safetyNotes: ['Don\'t let hips sag', 'Stop if lower back hurts']
+        safetyNotes: ['Don\'t hold breath', 'Stop if form breaks down']
       },
       {
-        id: 'core-crunches',
-        name: 'Crunches',
+        id: 'core-hanging-leg-raises',
+        name: 'Hanging Leg Raises',
         category: 'Core',
-        muscleGroups: ['Abdominals'],
-        equipment: ['Bodyweight'],
+        muscleGroups: ['Lower Abs', 'Hip Flexors'],
+        equipment: ['Pull-up Bar'],
         instructions: [
-          'Lie on back with knees bent',
-          'Place hands behind head lightly',
-          'Curl shoulders up toward knees',
-          'Lower back down with control'
-        ],
-        difficulty: 'beginner',
-        caloriesPerMinute: 4,
-        description: 'A traditional abdominal exercise that targets the rectus abdominis.',
-        tips: ['Don\'t pull on neck', 'Focus on quality over quantity', 'Exhale on the way up'],
-        variations: ['Bicycle crunches', 'Reverse crunches', 'Russian twists'],
-        safetyNotes: ['Keep lower back on ground', 'Don\'t strain neck']
-      },
-
-      // CARDIO EXERCISES
-      {
-        id: 'cardio-burpees',
-        name: 'Burpees',
-        category: 'Cardio',
-        muscleGroups: ['Full Body'],
-        equipment: ['Bodyweight'],
-        instructions: [
-          'Start standing, then squat down and place hands on ground',
-          'Jump feet back into plank position',
-          'Do a push-up (optional)',
-          'Jump feet back to squat, then jump up with arms overhead'
+          'Hang from pull-up bar with straight arms',
+          'Raise legs up toward chest',
+          'Lower with control',
+          'Avoid swinging'
         ],
         difficulty: 'intermediate',
-        caloriesPerMinute: 12,
-        description: 'A high-intensity full-body exercise that combines strength and cardio.',
-        tips: ['Maintain good form even when tired', 'Modify as needed', 'Land softly'],
-        variations: ['Half burpees', 'Burpee box jumps', 'Burpee broad jumps'],
-        safetyNotes: ['Land with bent knees', 'Don\'t sacrifice form for speed']
+        caloriesPerMinute: 6,
+        description: 'A challenging exercise for core and grip strength.',
+        tips: ['Control the movement', 'Don\'t swing', 'Focus on abs'],
+        variations: ['Knee raises', 'Hanging windshield wipers'],
+        safetyNotes: ['Build up grip strength first', 'Don\'t swing']
       },
       {
-        id: 'cardio-jumping-jacks',
-        name: 'Jumping Jacks',
-        category: 'Cardio',
-        muscleGroups: ['Full Body'],
+        id: 'core-russian-twists',
+        name: 'Russian Twists',
+        category: 'Core',
+        muscleGroups: ['Obliques', 'Core'],
         equipment: ['Bodyweight'],
         instructions: [
-          'Start standing with feet together and arms at sides',
-          'Jump feet apart while raising arms overhead',
-          'Jump back to starting position',
-          'Maintain steady rhythm'
+          'Sit with knees bent, lean back slightly',
+          'Lift feet off ground',
+          'Rotate torso side to side',
+          'Keep core engaged'
         ],
         difficulty: 'beginner',
-        caloriesPerMinute: 8,
-        description: 'A classic cardio exercise that gets the heart rate up quickly.',
-        tips: ['Stay light on feet', 'Keep core engaged', 'Breathe rhythmically'],
-        variations: ['Star jumps', 'Half jacks', 'Cross jacks'],
-        safetyNotes: ['Land softly', 'Stop if you feel joint pain']
+        caloriesPerMinute: 5,
+        description: 'A rotational core exercise targeting the obliques.',
+        tips: ['Keep chest up', 'Control the rotation', 'Breathe throughout'],
+        variations: ['Weighted Russian twists', 'Medicine ball twists'],
+        safetyNotes: ['Don\'t round back excessively', 'Control the movement']
       },
       {
-        id: 'cardio-mountain-climbers',
+        id: 'core-mountain-climbers',
         name: 'Mountain Climbers',
-        category: 'Cardio',
+        category: 'Core',
         muscleGroups: ['Core', 'Shoulders', 'Legs'],
         equipment: ['Bodyweight'],
         instructions: [
           'Start in plank position',
-          'Bring one knee toward chest',
-          'Quickly switch legs, bringing other knee to chest',
-          'Continue alternating in running motion'
+          'Alternate bringing knees to chest',
+          'Keep hips level',
+          'Maintain quick rhythm'
         ],
         difficulty: 'intermediate',
         caloriesPerMinute: 10,
-        description: 'A dynamic exercise that combines cardio with core strengthening.',
-        tips: ['Keep hips level', 'Maintain plank position', 'Quick feet'],
+        description: 'A dynamic exercise combining core strength and cardio.',
+        tips: ['Keep hips stable', 'Land softly', 'Maintain plank position'],
         variations: ['Slow mountain climbers', 'Cross-body mountain climbers'],
-        safetyNotes: ['Keep wrists under shoulders', 'Don\'t let hips pike up']
+        safetyNotes: ['Keep shoulders over hands', 'Don\'t let hips bounce']
       }
     ];
   }
@@ -470,9 +692,9 @@ class ExerciseDatabase {
         }
         // Default popular exercises if no usage data
         const popularOrder = [
-          'legs-squat', 'chest-push-up', 'back-pull-up', 'legs-deadlift',
-          'shoulders-overhead-press', 'core-plank', 'cardio-burpees',
-          'arms-bicep-curl', 'legs-lunges', 'chest-bench-press'
+          'legs-squat', 'chest-push-up', 'back-pull-up', 'back-deadlift',
+          'shoulders-overhead-press', 'core-plank', 'chest-bench-press',
+          'arms-bicep-curls', 'legs-lunges', 'legs-back-squat'
         ];
         return popularOrder.indexOf(a.id) - popularOrder.indexOf(b.id);
       });
