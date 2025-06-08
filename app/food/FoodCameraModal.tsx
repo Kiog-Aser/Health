@@ -5,6 +5,7 @@ import { Camera, X, RotateCcw, RefreshCw, Zap, CheckCircle, AlertCircle, Loader2
 import { FoodEntry } from '../types';
 import { geminiService } from '../services/geminiService';
 import FoodAnalysisModal from '../components/ui/FoodAnalysisModal';
+import VoiceRecorder from '../components/ui/VoiceRecorder';
 
 interface FoodCameraModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [capturedImage, setCapturedImage] = useState<File | null>(null);
+  const [voiceNote, setVoiceNote] = useState<string>('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,6 +64,7 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
     setAnalysisResult(null);
     setShowAnalysisModal(false);
     setCapturedImage(null);
+    setVoiceNote('');
   };
 
   const checkApiConfiguration = async () => {
@@ -331,6 +334,8 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
     setCapturedImage(null);
   };
 
+
+
   if (!isOpen) return null;
 
   return (
@@ -462,9 +467,20 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
                     </div>
                   )}
 
+                  {/* Voice Note Section - Floating on camera */}
+                  {videoReady && (
+                    <div className="absolute top-4 right-4 z-20">
+                      <VoiceRecorder
+                        onTranscriptChange={setVoiceNote}
+                        disabled={isCapturing || isAnalyzing}
+                        className="backdrop-blur-sm bg-black/20 rounded-lg p-2"
+                      />
+                    </div>
+                  )}
+
                   {/* Analyzing overlay */}
                   {isAnalyzing && (
-                    <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-30">
                       <div className="text-center text-white">
                         <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                         <p>Analyzing food with AI...</p>

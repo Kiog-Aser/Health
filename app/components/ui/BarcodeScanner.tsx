@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { X, Zap, Camera, AlertTriangle, RotateCcw, RefreshCw, Loader2 } from 'lucide-react';
+import { X, Zap, Camera, AlertTriangle, RotateCcw, RefreshCw, Loader2, Search } from 'lucide-react';
 
 interface BarcodeScannerProps {
   onScanSuccess: (barcode: string) => void;
@@ -21,6 +21,8 @@ export default function BarcodeScanner({
   const [permissionStatus, setPermissionStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [videoReady, setVideoReady] = useState(false);
   const [scanningActive, setScanningActive] = useState(false);
+  const [manualEntry, setManualEntry] = useState('');
+  const [showManualEntry, setShowManualEntry] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -48,6 +50,8 @@ export default function BarcodeScanner({
     setPermissionStatus('pending');
     setError('');
     setScanningActive(false);
+    setShowManualEntry(false);
+    setManualEntry('');
   }, [stream]);
 
   const initializeCamera = async () => {
@@ -174,6 +178,17 @@ export default function BarcodeScanner({
     setScanningActive(true);
     setIsScanning(true);
 
+    // Check if BarcodeDetector is available
+    const hasBarcodeDetector = 'BarcodeDetector' in window;
+    
+    if (!hasBarcodeDetector) {
+      console.log('⚠️ BarcodeDetector not available, showing manual entry option');
+      setError('Automatic scanning not supported on this device. Please use manual entry below.');
+      setShowManualEntry(true);
+      setIsScanning(false);
+      return;
+    }
+
     // Create scanning interval
     scanIntervalRef.current = setInterval(() => {
       scanForBarcode();
@@ -197,22 +212,40 @@ export default function BarcodeScanner({
       // Draw the current video frame to canvas
       context.drawImage(video, 0, 0);
 
-      // Try to detect barcodes using BarcodeDetector if available
+      // Try to detect barcodes using BarcodeDetector
       if ('BarcodeDetector' in window) {
-        const barcodeDetector = new (window as any).BarcodeDetector();
-        const barcodes = await barcodeDetector.detect(canvas);
-        
-        if (barcodes.length > 0) {
-          const barcode = barcodes[0];
-          console.log('✅ Barcode detected:', barcode.rawValue);
-          handleBarcodeFound(barcode.rawValue);
-          return;
+        try {
+          const barcodeDetector = new (window as any).BarcodeDetector({
+            formats: [
+              'code_128',
+              'code_39',
+              'code_93',
+              'codabar',
+              'ean_13',
+              'ean_8',
+              'itf',
+              'upc_a',
+              'upc_e',
+              'qr_code',
+              'data_matrix',
+              'aztec',
+              'pdf417'
+            ]
+          });
+          
+          const barcodes = await barcodeDetector.detect(canvas);
+          
+          if (barcodes.length > 0) {
+            const barcode = barcodes[0];
+            console.log('✅ Barcode detected:', barcode.rawValue);
+            handleBarcodeFound(barcode.rawValue);
+            return;
+          }
+        } catch (detectionError) {
+          console.log('Barcode detection failed:', detectionError);
+          // Continue trying without stopping the scanner
         }
       }
-
-      // Fallback: Try ZXing library if BarcodeDetector is not available
-      // For now, we'll use a simple approach with getUserMedia
-      // In production, you might want to include ZXing-js library
       
     } catch (err) {
       console.log('Barcode scan attempt failed:', err);
@@ -234,6 +267,22 @@ export default function BarcodeScanner({
     // Clean up and call success handler
     cleanup();
     onScanSuccess(barcodeText);
+  };
+
+  const handleManualSubmit = () => {
+    if (manualEntry.trim().length >= 8) {
+      // Validate that it's mostly numbers (allow some characters for certain barcode types)
+      const cleaned = manualEntry.trim().replace(/[^0-9]/g, '');
+      if (cleaned.length >= 8) {
+        console.log('🎯 Manual barcode entered:', cleaned);
+        cleanup();
+        onScanSuccess(cleaned);
+      } else {
+        setError('Please enter a valid barcode (at least 8 digits)');
+      }
+    } else {
+      setError('Barcode must be at least 8 characters long');
+    }
   };
 
   const toggleCamera = () => {
@@ -311,12 +360,20 @@ export default function BarcodeScanner({
                 <p className="text-sm text-base-content/60 mb-4">
                   We need access to your camera to scan barcodes
                 </p>
-                <button
-                  onClick={initializeCamera}
-                  className="btn btn-primary"
-                >
-                  Grant Camera Access
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={initializeCamera}
+                    className="btn btn-primary"
+                  >
+                    Grant Camera Access
+                  </button>
+                  <button
+                    onClick={() => setShowManualEntry(true)}
+                    className="btn btn-outline btn-sm"
+                  >
+                    Enter Barcode Manually
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -402,7 +459,43 @@ export default function BarcodeScanner({
                 >
                   <RefreshCw className="w-5 h-5" />
                 </button>
+
+                <button
+                  onClick={() => setShowManualEntry(!showManualEntry)}
+                  className="btn btn-outline btn-sm"
+                  title="Enter barcode manually"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Manual Entry
+                </button>
               </div>
+
+              {/* Manual Entry */}
+              {showManualEntry && (
+                <div className="bg-base-200 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">Enter Barcode Manually</h4>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={manualEntry}
+                      onChange={(e) => setManualEntry(e.target.value)}
+                      placeholder="Enter barcode numbers (e.g., 1234567890123)"
+                      className="input input-bordered flex-1"
+                      maxLength={20}
+                    />
+                    <button
+                      onClick={handleManualSubmit}
+                      className="btn btn-primary"
+                      disabled={manualEntry.length < 8}
+                    >
+                      Search
+                    </button>
+                  </div>
+                  <p className="text-xs text-base-content/60 mt-1">
+                    Find the barcode numbers on your product and enter them here
+                  </p>
+                </div>
+              )}
 
               {/* Error message */}
               {error && (

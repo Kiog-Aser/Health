@@ -22,6 +22,14 @@ interface FoodAnalysisResult {
   fiber: number;
   sugar: number;
   sodium: number;
+  vitaminC: number;
+  calcium: number;
+  iron: number;
+  potassium: number;
+  vitaminA: number;
+  vitaminD: number;
+  saturatedFat: number;
+  cholesterol: number;
   confidence: number;
   analysis: string;
   detectedIngredients: DetailedIngredient[];
@@ -33,6 +41,8 @@ interface FoodAnalysisResult {
   cookingMethod?: string;
   cuisine?: string;
   allergens: string[];
+  nutritionHighlights: string[];
+  servingRecommendation: string;
 }
 
 class GeminiService {
@@ -157,6 +167,14 @@ class GeminiService {
           "fiber": number (in grams),
           "sugar": number (in grams),
           "sodium": number (in mg),
+          "vitaminC": number (in mg, 0 if none),
+          "calcium": number (in mg, 0 if none),
+          "iron": number (in mg, 0 if none),
+          "potassium": number (in mg, 0 if none),
+          "vitaminA": number (in IU, 0 if none),
+          "vitaminD": number (in IU, 0 if none),
+          "saturatedFat": number (in grams),
+          "cholesterol": number (in mg),
           "confidence": number (0-1, overall confidence in nutritional analysis),
           "analysis": "Detailed description of what you see and reasoning for estimates",
           "detectedIngredients": [
@@ -174,7 +192,9 @@ class GeminiService {
           "healthNotes": ["specific health-related observations"],
           "cookingMethod": "apparent cooking method if visible",
           "cuisine": "cuisine type if identifiable",
-          "allergens": ["potential allergens present"]
+          "allergens": ["potential allergens present"],
+          "nutritionHighlights": ["key nutritional benefits or concerns"],
+          "servingRecommendation": "suggested serving size for optimal nutrition"
         }
         
         Analysis Guidelines:
@@ -187,6 +207,8 @@ class GeminiService {
         - Consider cooking methods that affect calorie content
         - Health score should consider nutritional balance, processing level, and ingredient quality
         - Include common allergens: dairy, eggs, nuts, soy, wheat, shellfish, fish
+        - Estimate micronutrients based on visible ingredients (fruits/vegetables for vitamins, dairy for calcium, etc.)
+        - Include key nutritional highlights (high protein, good source of fiber, antioxidants, etc.)
         
         Only respond with valid JSON, no other text.
       `;
@@ -241,6 +263,14 @@ class GeminiService {
         fiber: Math.round((result.fiber || 0) * 10) / 10,
         sugar: Math.round((result.sugar || 0) * 10) / 10,
         sodium: Math.round(result.sodium || 0),
+        vitaminC: Math.round(result.vitaminC || 0),
+        calcium: Math.round(result.calcium || 0),
+        iron: Math.round(result.iron || 0),
+        potassium: Math.round(result.potassium || 0),
+        vitaminA: Math.round(result.vitaminA || 0),
+        vitaminD: Math.round(result.vitaminD || 0),
+        saturatedFat: Math.round((result.saturatedFat || 0) * 10) / 10,
+        cholesterol: Math.round(result.cholesterol || 0),
         confidence: Math.min(1, Math.max(0, result.confidence || 0.5)),
         analysis: result.analysis || 'Food analysis completed',
         detectedIngredients: result.detectedIngredients || [],
@@ -251,7 +281,9 @@ class GeminiService {
         healthNotes: result.healthNotes || [],
         cookingMethod: result.cookingMethod,
         cuisine: result.cuisine,
-        allergens: result.allergens || []
+        allergens: result.allergens || [],
+        nutritionHighlights: result.nutritionHighlights || [],
+        servingRecommendation: result.servingRecommendation || 'No serving recommendation provided'
       };
     } catch (error) {
       console.error('Failed to analyze food image:', error);

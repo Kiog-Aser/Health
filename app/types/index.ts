@@ -13,6 +13,18 @@ export interface FoodEntry {
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   confidence?: number; // AI confidence score
   aiAnalysis?: string;
+  
+  // Portion tracking
+  portionMultiplier?: number;
+  portionUnit?: 'serving' | 'cup' | 'piece' | 'slice' | 'gram' | 'oz';
+  baseCalories?: number;
+  baseProtein?: number;
+  baseCarbs?: number;
+  baseFat?: number;
+  baseFiber?: number;
+  baseSugar?: number;
+  baseSodium?: number;
+  showManualNutrition?: boolean;
 }
 
 export interface WorkoutEntry {
@@ -204,4 +216,20 @@ export interface NavigationProps {
   push: (href: string) => void;
   back: () => void;
   replace: (href: string) => void;
+}
+
+export interface SavedMeal {
+  id: string;
+  name: string;
+  description?: string;
+  items: FoodEntry[];
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  totalFiber: number;
+  createdAt: number;
+  lastUsed?: number;
+  tags?: string[];
+  isFavorite?: boolean;
 } 

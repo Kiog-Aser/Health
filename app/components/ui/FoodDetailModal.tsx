@@ -1,7 +1,9 @@
 'use client';
 
-import { X, Calendar, Clock, Zap, Target, Utensils, Activity } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Calendar, Clock, Zap, Target, Utensils, Activity, Eye, Info } from 'lucide-react';
 import { FoodEntry } from '../../types';
+import { geminiService } from '../../services/geminiService';
 
 interface FoodDetailModalProps {
   food: FoodEntry | null;
@@ -10,6 +12,11 @@ interface FoodDetailModalProps {
 }
 
 export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailModalProps) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'ingredients'>('overview');
+  const [inspectingIngredient, setInspectingIngredient] = useState<string | null>(null);
+  const [ingredientDetails, setIngredientDetails] = useState<any>(null);
+  const [isLoadingIngredient, setIsLoadingIngredient] = useState(false);
+
   if (!isOpen || !food) return null;
 
   const formatTimestamp = (timestamp: number) => {
@@ -61,6 +68,24 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
     }
   }
 
+  const handleInspectIngredient = async (ingredientName: string) => {
+    setInspectingIngredient(ingredientName);
+    setIsLoadingIngredient(true);
+    
+    try {
+      const details = await geminiService.getIngredientDetails(ingredientName);
+      setIngredientDetails(details);
+    } catch (error) {
+      console.error('Failed to get ingredient details:', error);
+    } finally {
+      setIsLoadingIngredient(false);
+    }
+  };
+
+  // Get detected ingredients from AI analysis
+  const detectedIngredients = aiData?.detectedIngredients || [];
+  const hasIngredients = detectedIngredients.length > 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-base-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
@@ -93,145 +118,222 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
           </button>
         </div>
 
+        {/* Tabs - only show if there are ingredients */}
+        {hasIngredients && (
+          <div className="flex border-b border-base-200">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex-1 py-3 px-4 text-sm font-medium ${
+                activeTab === 'overview' ? 'border-b-2 border-primary text-primary' : 'text-base-content/60'
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('ingredients')}
+              className={`flex-1 py-3 px-4 text-sm font-medium ${
+                activeTab === 'ingredients' ? 'border-b-2 border-primary text-primary' : 'text-base-content/60'
+              }`}
+            >
+              Ingredients ({detectedIngredients.length})
+            </button>
+          </div>
+        )}
+
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="space-y-6">
-            {/* Calories Section */}
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-3">
-                <span className="text-2xl font-bold text-primary">{food.calories}</span>
+          {(!hasIngredients || activeTab === 'overview') && (
+            <div className="space-y-6">
+              {/* Calories Section */}
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-3">
+                  <span className="text-2xl font-bold text-primary">{food.calories}</span>
+                </div>
+                <p className="text-lg font-semibold">Calories</p>
+                <p className="text-sm text-base-content/60">Total Energy</p>
               </div>
-              <p className="text-lg font-semibold">Calories</p>
-              <p className="text-sm text-base-content/60">Total Energy</p>
-            </div>
 
-            {/* Nutrition Grid */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Target className="w-5 h-5 text-primary" />
-                Nutrition Breakdown
-              </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {nutritionData.map((item) => (
-                  <div key={item.label} className={`p-4 rounded-lg ${item.bgColor}`}>
-                    <div className="text-center">
-                      <div className={`text-2xl font-bold ${item.color}`}>
-                        {item.value}
-                      </div>
-                      <div className={`text-xs ${item.color} opacity-80`}>
-                        {item.unit}
-                      </div>
-                      <div className="text-sm font-medium text-base-content/80 mt-1">
-                        {item.label}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* AI Analysis Section */}
-            {hasAIAnalysis && (
+              {/* Nutrition Grid */}
               <div>
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-primary" />
-                  AI Analysis
+                  <Target className="w-5 h-5 text-primary" />
+                  Nutrition Breakdown
                 </h3>
-                <div className="bg-primary/10 p-4 rounded-lg">
-                  {aiData?.healthScore && (
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium">Health Score</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full" 
-                            style={{ width: `${(aiData.healthScore / 10) * 100}%` }}
-                          ></div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                  {nutritionData.map((item) => (
+                    <div key={item.label} className={`p-4 rounded-lg ${item.bgColor}`}>
+                      <div className="text-center">
+                        <div className={`text-2xl font-bold ${item.color}`}>
+                          {item.value}
                         </div>
-                        <span className="font-bold text-primary">{aiData.healthScore}/10</span>
+                        <div className={`text-xs ${item.color} opacity-80`}>
+                          {item.unit}
+                        </div>
+                        <div className="text-sm font-medium text-base-content/80 mt-1">
+                          {item.label}
+                        </div>
                       </div>
                     </div>
-                  )}
-                  
-                  {aiData?.analysis && (
-                    <div className="text-sm text-base-content/80">
-                      <p>{aiData.analysis}</p>
-                    </div>
-                  )}
-                  
-                  {aiData?.detectedIngredients && aiData.detectedIngredients.length > 0 && (
-                    <div className="mt-3">
-                      <p className="font-medium text-sm mb-2">Detected Ingredients:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {aiData.detectedIngredients.map((ingredient: any, index: number) => (
-                          <span key={index} className="badge badge-primary badge-sm">
-                            {ingredient.name || ingredient}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!aiData?.analysis && !aiData?.healthScore && (
-                    <p className="text-sm text-base-content/70">{food.aiAnalysis}</p>
-                  )}
+                  ))}
                 </div>
               </div>
-            )}
 
-            {/* Confidence Indicator */}
-            {food.confidence && food.confidence < 1.0 && (
-              <div className="bg-warning/10 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-warning" />
-                  AI Confidence
-                </h3>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-warning h-2 rounded-full" 
-                      style={{ width: `${food.confidence * 100}%` }}
-                    ></div>
+              {/* AI Analysis Section */}
+              {hasAIAnalysis && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-primary" />
+                    AI Analysis
+                  </h3>
+                  <div className="bg-primary/10 p-4 rounded-lg">
+                    {aiData?.healthScore && (
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium">Health Score</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-primary h-2 rounded-full" 
+                              style={{ width: `${(aiData.healthScore / 10) * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="font-bold text-primary">{aiData.healthScore}/10</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {aiData?.analysis && (
+                      <div className="text-sm text-base-content/80">
+                        <p>{aiData.analysis}</p>
+                      </div>
+                    )}
+                    
+                    {!aiData?.analysis && !aiData?.healthScore && (
+                      <p className="text-sm text-base-content/70">{food.aiAnalysis}</p>
+                    )}
                   </div>
-                  <span className="text-sm font-medium text-warning">
-                    {Math.round(food.confidence * 100)}%
-                  </span>
                 </div>
-                <p className="text-xs text-base-content/60 mt-2">
-                  This entry was analyzed by AI with {Math.round(food.confidence * 100)}% confidence
-                </p>
-              </div>
-            )}
+              )}
 
-            {/* Food Image */}
-            {food.imageUri && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Utensils className="w-5 h-5 text-primary" />
-                  Food Image
-                </h3>
-                <div className="rounded-lg overflow-hidden">
-                  <img 
-                    src={food.imageUri} 
-                    alt={food.name}
-                    className="w-full h-48 object-cover"
-                  />
+              {/* Confidence Indicator */}
+              {food.confidence && food.confidence < 1.0 && (
+                <div className="bg-warning/10 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-warning" />
+                    AI Confidence
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-warning h-2 rounded-full" 
+                        style={{ width: `${food.confidence * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium text-warning">
+                      {Math.round(food.confidence * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-base-content/60 mt-2">
+                    This entry was analyzed by AI. Lower confidence may indicate the analysis should be verified.
+                  </p>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
+          )}
 
-        {/* Footer */}
-        <div className="p-6 border-t border-base-300">
-          <button
-            onClick={onClose}
-            className="btn btn-primary w-full"
-          >
-            Close
-          </button>
+          {/* Ingredients Tab */}
+          {hasIngredients && activeTab === 'ingredients' && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Utensils className="w-5 h-5 text-primary" />
+                Detected Ingredients
+              </h3>
+              
+              {detectedIngredients.map((ingredient: any, index: number) => (
+                <div key={index} className="health-card p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium">{ingredient.name}</div>
+                      {ingredient.quantity && (
+                        <div className="text-sm text-base-content/60">{ingredient.quantity}</div>
+                      )}
+                      {ingredient.calories && (
+                        <div className="text-xs text-base-content/50">
+                          ~{ingredient.calories} cal
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleInspectIngredient(ingredient.name)}
+                      className="btn btn-ghost btn-sm btn-circle"
+                      title="Inspect ingredient"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Ingredient Details Modal */}
+      {inspectingIngredient && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-base-100 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-base-200 flex-shrink-0">
+              <h3 className="font-semibold">{inspectingIngredient}</h3>
+              <button
+                onClick={() => {
+                  setInspectingIngredient(null);
+                  setIngredientDetails(null);
+                }}
+                className="btn btn-ghost btn-sm btn-circle"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto flex-1 min-h-0">
+              {isLoadingIngredient ? (
+                <div className="text-center py-8">
+                  <div className="loading loading-spinner loading-md"></div>
+                  <p className="mt-2 text-sm">Analyzing ingredient...</p>
+                </div>
+              ) : ingredientDetails ? (
+                <div className="space-y-4">
+                  {ingredientDetails.nutritionPer100g && (
+                    <div>
+                      <h4 className="font-medium mb-2">Nutrition (per 100g)</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>Calories: {ingredientDetails.nutritionPer100g.calories}</div>
+                        <div>Protein: {ingredientDetails.nutritionPer100g.protein}g</div>
+                        <div>Carbs: {ingredientDetails.nutritionPer100g.carbs}g</div>
+                        <div>Fat: {ingredientDetails.nutritionPer100g.fat}g</div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {ingredientDetails.healthBenefits && ingredientDetails.healthBenefits.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-2 text-success">Health Benefits</h4>
+                      <ul className="space-y-1">
+                        {ingredientDetails.healthBenefits.map((benefit: string, index: number) => (
+                          <li key={index} className="text-sm text-base-content/70">• {benefit}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-base-content/50">
+                  <p>Unable to load ingredient details</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

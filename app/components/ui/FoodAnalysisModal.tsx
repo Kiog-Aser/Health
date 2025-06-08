@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, CheckCircle, AlertTriangle, Info, Eye, Edit3, Clock, Apple } from 'lucide-react';
 import { FoodEntry } from '../../types';
 import { geminiService } from '../../services/geminiService';
@@ -58,13 +58,18 @@ export default function FoodAnalysisModal({
   analysisResult,
   capturedImage
 }: FoodAnalysisModalProps) {
-  const [selectedMealType, setSelectedMealType] = useState<FoodEntry['mealType']>(
-    analysisResult?.recommendedMealType || 'snack'
-  );
+  const [selectedMealType, setSelectedMealType] = useState<FoodEntry['mealType']>('snack');
   const [activeTab, setActiveTab] = useState<'overview' | 'ingredients' | 'health'>('overview');
   const [inspectingIngredient, setInspectingIngredient] = useState<string | null>(null);
   const [ingredientDetails, setIngredientDetails] = useState<any>(null);
   const [isLoadingIngredient, setIsLoadingIngredient] = useState(false);
+
+  // Set recommended meal type when analysis result changes
+  useEffect(() => {
+    if (analysisResult?.recommendedMealType) {
+      setSelectedMealType(analysisResult.recommendedMealType);
+    }
+  }, [analysisResult]);
 
   if (!isOpen || !analysisResult) return null;
 
@@ -241,9 +246,6 @@ export default function FoodAnalysisModal({
                       >
                         <span className="mr-2">{meal.icon}</span>
                         {meal.label}
-                        {meal.value === analysisResult.recommendedMealType && (
-                          <span className="ml-1 text-xs opacity-70">(AI recommended)</span>
-                        )}
                       </button>
                     ))}
                   </div>
