@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { HealthProvider } from './context/HealthContext';
+import PWAInitializer from './components/PWAInitializer';
 
 type Theme = 'light' | 'dark' | 'auto';
 
@@ -60,6 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <HealthProvider>
+        <PWAInitializer />
         {children}
       </HealthProvider>
     </ThemeProvider>

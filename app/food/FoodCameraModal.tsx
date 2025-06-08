@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Camera, X, RotateCcw, RefreshCw, Zap, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { FoodEntry } from '../types';
 import { geminiService } from '../services/geminiService';
+import { permissionService } from '../services/permissionService';
 import FoodAnalysisModal from '../components/ui/FoodAnalysisModal';
 import VoiceRecorder from '../components/ui/VoiceRecorder';
 
@@ -29,6 +30,11 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Pre-warm permissions on component mount (iOS PWA optimization)
+  useEffect(() => {
+    permissionService.preWarmCameraPermission();
+  }, []);
 
   // Check API configuration and initialize camera when modal opens
   useEffect(() => {
@@ -107,54 +113,57 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
 
       console.log('🚀 Starting camera initialization with facing mode:', facingMode);
       
-      const constraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 }
-        }
-      };
-
-      console.log('Requesting camera access with constraints:', constraints);
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Check permission state first
+      const permissionState = await permissionService.checkCameraPermission();
+      console.log('📷 Camera permission state:', permissionState);
       
-      console.log('✅ Got camera stream:', newStream);
+      if (permissionState === 'denied') {
+        setPermissionStatus('denied');
+        setError('Camera access denied. Please allow camera permissions in your browser settings and reload the app.');
+        return;
+      }
 
-      setStream(newStream);
+      // Try to get camera stream with permission service
+      const { granted, stream: newStream } = await permissionService.requestCameraPermission();
+      
+      if (!granted || !newStream) {
+        setPermissionStatus('denied');
+        setError('Unable to access camera. Please ensure camera permissions are granted.');
+        return;
+      }
+
+      console.log('✅ Got camera stream via permission service');
+
+      // Apply facing mode constraint if needed
+      if (facingMode !== 'environment') {
+        try {
+          const constraints = {
+            video: {
+              facingMode: facingMode,
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 }
+            }
+          };
+
+          // Stop the current stream and get a new one with the right facing mode
+          newStream.getTracks().forEach(track => track.stop());
+          const facingModeStream = await navigator.mediaDevices.getUserMedia(constraints);
+          setStream(facingModeStream);
+          setupVideoElement(facingModeStream);
+        } catch (error) {
+          console.log('⚠️ Facing mode constraint failed, using default stream');
+          setStream(newStream);
+          setupVideoElement(newStream);
+        }
+      } else {
+        setStream(newStream);
+        setupVideoElement(newStream);
+      }
+
       setPermissionStatus('granted');
 
-      // Wait for React to update before assigning to video element
-      setTimeout(() => {
-        if (videoRef.current && newStream) {
-          const video = videoRef.current;
-          
-          console.log('🎥 Setting up video element...');
-          video.srcObject = newStream;
-          video.load();
-          
-          // Event handlers
-          video.onloadedmetadata = () => {
-            console.log('✅ Video metadata loaded!', {
-              width: video.videoWidth,
-              height: video.videoHeight,
-              readyState: video.readyState
-            });
-            setVideoReady(true);
-          };
-          
-          // Try to play
-          video.play().then(() => {
-            console.log('✅ Video playing automatically!');
-            setVideoReady(true);
-          }).catch(err => {
-            console.log('⚠️ Autoplay failed:', err);
-            setVideoReady(true); // Still set ready since video works
-          });
-        }
-      }, 100);
-
     } catch (err: any) {
-      console.error('❌ Camera access failed:', err);
+      console.error('❌ Camera initialization failed:', err);
       setPermissionStatus('denied');
       
       if (err.name === 'NotAllowedError') {
@@ -168,6 +177,38 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
         setError(`Camera error: ${err.message}`);
       }
     }
+  };
+
+  const setupVideoElement = (mediaStream: MediaStream) => {
+    // Wait for React to update before assigning to video element
+    setTimeout(() => {
+      if (videoRef.current && mediaStream) {
+        const video = videoRef.current;
+        
+        console.log('🎥 Setting up video element...');
+        video.srcObject = mediaStream;
+        video.load();
+        
+        // Event handlers
+        video.onloadedmetadata = () => {
+          console.log('✅ Video metadata loaded!', {
+            width: video.videoWidth,
+            height: video.videoHeight,
+            readyState: video.readyState
+          });
+          setVideoReady(true);
+        };
+        
+        // Try to play
+        video.play().then(() => {
+          console.log('✅ Video playing automatically!');
+          setVideoReady(true);
+        }).catch(err => {
+          console.log('⚠️ Autoplay failed:', err);
+          setVideoReady(true); // Still set ready since video works
+        });
+      }
+    }, 100);
   };
 
   const tryBasicCamera = async () => {
@@ -411,12 +452,34 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
                   <p className="text-sm text-base-content/60 mb-4">
                     We need access to your camera to scan and analyze food items with AI
                   </p>
+                  
+                  {permissionService.isIOSPWA() && (
+                    <div className="mb-4 p-3 bg-info/10 border border-info/20 rounded-lg text-left">
+                      <p className="text-sm font-medium text-info mb-2">📱 iOS PWA Instructions:</p>
+                      <ol className="text-xs text-base-content/70 space-y-1 list-decimal list-inside">
+                        <li>Close this app completely</li>
+                        <li>Open Safari and visit your app URL</li>
+                        <li>Grant camera permissions in Safari</li>
+                        <li>Return to this PWA - permissions will now persist</li>
+                      </ol>
+                    </div>
+                  )}
+                  
                   <button
                     onClick={initializeCamera}
                     className="btn btn-primary"
                   >
                     Grant Camera Access
                   </button>
+                  
+                  {permissionService.isIOSPWA() && (
+                    <button
+                      onClick={() => permissionService.clearPermissionCache()}
+                      className="btn btn-ghost btn-sm mt-2"
+                    >
+                      Clear Permission Cache
+                    </button>
+                  )}
                 </div>
               </div>
             )}

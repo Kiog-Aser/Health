@@ -120,6 +120,20 @@ a {
 }
 
 /* PWA specific styles */
+.ios-pwa {
+  /* Handle iOS safe areas */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iOS PWA status bar adjustments */
+@supports (-webkit-touch-callout: none) and (display-mode: standalone) {
+  .ios-pwa {
+    padding-top: max(env(safe-area-inset-top), 20px);
+  }
+}
 @media (display-mode: standalone) {
   body {
     padding-top: env(safe-area-inset-top);

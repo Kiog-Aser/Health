@@ -9,6 +9,9 @@
   "start_url": "/",
   "orientation": "portrait-primary",
   "categories": ["health", "fitness", "lifestyle"],
+  "permissions": [
+    "camera"
+  ],
   "icons": [
     {
       "src": "/icons/icon-72x72.png",

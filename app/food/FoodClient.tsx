@@ -13,6 +13,7 @@ import MacroBreakdown from '../components/ui/MacroBreakdown';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import { useToast } from '../components/ui/ToastNotification';
 import FoodDetailModal from '../components/ui/FoodDetailModal';
+import PWADebugInfo from '../components/PWADebugInfo';
 import { FoodEntry } from '../types';
 
 const MEAL_TYPES = [
@@ -348,6 +349,7 @@ export default function FoodClient() {
               <span className="hidden sm:inline">Saved</span>
               <span className="sm:hidden">Saved</span>
             </button>
+            <PWADebugInfo className="hidden sm:flex" />
           </div>
         </div>
 
