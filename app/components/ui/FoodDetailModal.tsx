@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Zap, Utensils, Activity, Eye, Info } from 'lucide-react';
+import { X, Zap, Utensils, Activity, Eye, Info, AlertTriangle } from 'lucide-react';
 import { FoodEntry } from '../../types';
 import { geminiService } from '../../services/geminiService';
 
@@ -12,7 +12,7 @@ interface FoodDetailModalProps {
 }
 
 export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'ingredients'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ingredients' | 'health'>('overview');
   const [inspectingIngredient, setInspectingIngredient] = useState<string | null>(null);
   const [ingredientDetails, setIngredientDetails] = useState<any>(null);
   const [isLoadingIngredient, setIsLoadingIngredient] = useState(false);
@@ -110,19 +110,33 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
           </button>
         </div>
 
-        {/* Tabs - only show if there are ingredients */}
-        {hasIngredients && (
-          <div className="p-4 border-b border-base-200">
-            <select
-              className="select select-bordered w-full"
-              value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value as 'overview' | 'ingredients')}
-            >
-              <option value="overview">Overview</option>
-              <option value="ingredients">Ingredients ({detectedIngredients.length})</option>
-            </select>
-          </div>
-        )}
+        {/* Tabs */}
+        <div className="flex border-b border-base-200 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex-1 py-3 px-4 text-sm font-medium ${
+              activeTab === 'overview' ? 'border-b-2 border-primary text-primary' : 'text-base-content/60'
+            }`}
+          >
+            Info
+          </button>
+          <button
+            onClick={() => setActiveTab('ingredients')}
+            className={`flex-1 py-3 px-4 text-sm font-medium ${
+              activeTab === 'ingredients' ? 'border-b-2 border-primary text-primary' : 'text-base-content/60'
+            }`}
+          >
+            Ingredients ({detectedIngredients.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('health')}
+            className={`flex-1 py-3 px-4 text-sm font-medium ${
+              activeTab === 'health' ? 'border-b-2 border-primary text-primary' : 'text-base-content/60'
+            }`}
+          >
+            Health Info
+          </button>
+        </div>
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
@@ -242,6 +256,39 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {activeTab === 'health' && (
+            <div className="space-y-4">
+              {aiData?.healthNotes?.length > 0 && (
+                <div className="health-card p-4">
+                  <h3 className="font-medium mb-2">Health Notes</h3>
+                  <ul className="space-y-1">
+                    {aiData.healthNotes.map((note: string, idx: number) => (
+                      <li key={idx} className="text-sm text-base-content/70 flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {aiData?.allergens?.length > 0 && (
+                <div className="alert alert-warning">
+                  <AlertTriangle className="w-5 h-5" />
+                  <div>
+                    <h4 className="font-medium">Potential Allergens</h4>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {aiData.allergens.map((allergen: string, idx: number) => (
+                        <span key={idx} className="badge badge-warning badge-sm">
+                          {allergen}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
