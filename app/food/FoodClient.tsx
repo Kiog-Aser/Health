@@ -251,6 +251,11 @@ export default function FoodClient() {
     }
   };
 
+  const handleDeleteSavedMeal = (mealId: string) => {
+    setSavedMeals(prev => prev.filter(meal => meal.id !== mealId));
+    showSuccess('Saved Meal Removed', 'Saved meal has been removed.');
+  };
+
   if (state.isLoading) {
     return <LoadingScreen message="Loading your nutrition data..." />;
   }
@@ -378,29 +383,18 @@ export default function FoodClient() {
 
         {/* Meal Type Filter */}
         <div className="health-card p-4">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedMealType('all')}
-              className={`btn btn-sm ${
-                selectedMealType === 'all' ? 'btn-primary' : 'btn-outline'
-              }`}
-            >
-              All Meals
-            </button>
+          <label htmlFor="meal-filter" className="sr-only">Filter by meal type</label>
+          <select
+            id="meal-filter"
+            className="select select-bordered w-full"
+            value={selectedMealType}
+            onChange={(e) => setSelectedMealType(e.target.value as 'all' | FoodEntry['mealType'])}
+          >
+            <option value="all">All Meals</option>
             {MEAL_TYPES.map((meal) => (
-              <button
-                key={meal.value}
-                onClick={() => setSelectedMealType(meal.value)}
-                className={`btn btn-sm ${
-                  selectedMealType === meal.value ? 'btn-primary' : 'btn-outline'
-                }`}
-              >
-                <span className="mr-1">{meal.icon}</span>
-                <span className="hidden sm:inline">{meal.label}</span>
-                <span className="sm:hidden">{meal.label.slice(0, 3)}</span>
-              </button>
+              <option key={meal.value} value={meal.value}>{meal.label}</option>
             ))}
-          </div>
+          </select>
         </div>
 
         {/* Meals by Type */}
@@ -587,9 +581,9 @@ export default function FoodClient() {
                 <h3 className="text-lg font-semibold">Saved Meals</h3>
                 <button
                   onClick={() => setShowSavedMeals(false)}
-                  className="btn btn-ghost btn-sm btn-circle"
+                  className="btn btn-ghost btn-circle"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-6 h-6" />
                 </button>
               </div>
               
@@ -606,7 +600,16 @@ export default function FoodClient() {
                   {savedMeals.map((meal) => (
                     <div key={meal.id} className="border border-base-300 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold">{meal.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">{meal.name}</h4>
+                          <button
+                            onClick={() => handleDeleteSavedMeal(meal.id)}
+                            className="btn btn-ghost btn-sm btn-circle text-error"
+                            title="Delete Saved Meal"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                         <button
                           onClick={() => handleAddSavedMeal(meal)}
                           className="btn btn-primary btn-sm"
@@ -628,6 +631,61 @@ export default function FoodClient() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-base-100 rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Add Food Entry</h3>
+                <button
+                  onClick={() => { setShowAddModal(false); resetNewEntry(); }}
+                  className="btn btn-ghost btn-circle"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Name</label>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={newEntry.name}
+                    onChange={(e) => setNewEntry({ ...newEntry, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Calories</label>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={newEntry.calories}
+                    onChange={(e) => setNewEntry({ ...newEntry, calories: Number(e.target.value), baseCalories: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Meal Type</label>
+                  <select
+                    className="select select-bordered w-full"
+                    value={newEntry.mealType}
+                    onChange={(e) => setNewEntry({ ...newEntry, mealType: e.target.value as FoodEntry['mealType'] })}
+                  >
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snack">Snack</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <button onClick={() => { setShowAddModal(false); resetNewEntry(); }} className="btn btn-outline">Cancel</button>
+                <button onClick={handleAddEntry} className="btn btn-primary">Add Food</button>
+              </div>
             </div>
           </div>
         </div>

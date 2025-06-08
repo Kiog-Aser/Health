@@ -414,9 +414,9 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
             </div>
             <button
               onClick={onClose}
-              className="btn btn-ghost btn-sm btn-circle"
+              className="btn btn-ghost btn-circle"
             >
-              <X className="w-4 h-4" />
+              <X className="w-6 h-6" />
             </button>
           </div>
 

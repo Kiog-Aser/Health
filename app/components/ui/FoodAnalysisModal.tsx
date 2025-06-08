@@ -144,9 +144,9 @@ export default function FoodAnalysisModal({
           </div>
           <button
             onClick={onClose}
-            className="btn btn-ghost btn-sm btn-circle"
+            className="btn btn-ghost btn-circle"
           >
-            <X className="w-4 h-4" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
@@ -277,10 +277,10 @@ export default function FoodAnalysisModal({
                       </div>
                       <button
                         onClick={() => handleInspectIngredient(ingredient.name)}
-                        className="btn btn-ghost btn-sm btn-circle"
+                        className="btn btn-ghost btn-circle"
                         title="Inspect ingredient"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-6 h-6" />
                       </button>
                     </div>
                   </div>
@@ -373,9 +373,9 @@ export default function FoodAnalysisModal({
                   setInspectingIngredient(null);
                   setIngredientDetails(null);
                 }}
-                className="btn btn-ghost btn-sm btn-circle"
+                className="btn btn-ghost btn-circle"
               >
-                <X className="w-4 h-4" />
+                <X className="w-6 h-6" />
               </button>
             </div>
             

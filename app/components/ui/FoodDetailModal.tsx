@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Zap, Target, Utensils, Activity, Eye, Info } from 'lucide-react';
+import { X, Zap, Utensils, Activity, Eye, Info } from 'lucide-react';
 import { FoodEntry } from '../../types';
 import { geminiService } from '../../services/geminiService';
 
@@ -97,46 +97,30 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
             </div>
             <div>
               <h2 className="text-xl font-bold">{food.name}</h2>
-              <div className="flex items-center gap-4 text-sm text-base-content/60">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {date}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  {time}
-                </span>
-                <span className="capitalize">{food.mealType}</span>
-              </div>
+              <p className="text-sm text-base-content/60 mt-1">
+                {date} at {time} • {food.mealType}
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="btn btn-ghost btn-sm btn-circle"
+            className="btn btn-ghost btn-circle"
           >
-            <X className="w-4 h-4" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Tabs - only show if there are ingredients */}
         {hasIngredients && (
-          <div className="flex border-b border-base-200">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex-1 py-3 px-4 text-sm font-medium ${
-                activeTab === 'overview' ? 'border-b-2 border-primary text-primary' : 'text-base-content/60'
-              }`}
+          <div className="p-4 border-b border-base-200">
+            <select
+              className="select select-bordered w-full"
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as 'overview' | 'ingredients')}
             >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('ingredients')}
-              className={`flex-1 py-3 px-4 text-sm font-medium ${
-                activeTab === 'ingredients' ? 'border-b-2 border-primary text-primary' : 'text-base-content/60'
-              }`}
-            >
-              Ingredients ({detectedIngredients.length})
-            </button>
+              <option value="overview">Overview</option>
+              <option value="ingredients">Ingredients ({detectedIngredients.length})</option>
+            </select>
           </div>
         )}
 
@@ -153,29 +137,15 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
                 <p className="text-sm text-base-content/60">Total Energy</p>
               </div>
 
-              {/* Nutrition Grid */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  Nutrition Breakdown
-                </h3>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                  {nutritionData.map((item) => (
-                    <div key={item.label} className={`p-4 rounded-lg ${item.bgColor}`}>
-                      <div className="text-center">
-                        <div className={`text-2xl font-bold ${item.color}`}>
-                          {item.value}
-                        </div>
-                        <div className={`text-xs ${item.color} opacity-80`}>
-                          {item.unit}
-                        </div>
-                        <div className="text-sm font-medium text-base-content/80 mt-1">
-                          {item.label}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {/* Nutrition Breakdown */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold mb-2">Nutrition Breakdown</h3>
+                {nutritionData.map((item) => (
+                  <div key={item.label} className="health-card p-3 flex justify-between">
+                    <span className="text-sm">{item.label}</span>
+                    <span className="font-medium">{item.value}{item.unit}</span>
+                  </div>
+                ))}
               </div>
 
               {/* AI Analysis Section */}
@@ -264,7 +234,7 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
                     </div>
                     <button
                       onClick={() => handleInspectIngredient(ingredient.name)}
-                      className="btn btn-ghost btn-sm btn-circle"
+                      className="btn btn-ghost btn-circle"
                       title="Inspect ingredient"
                     >
                       <Eye className="w-4 h-4" />
@@ -288,9 +258,9 @@ export default function FoodDetailModal({ food, isOpen, onClose }: FoodDetailMod
                   setInspectingIngredient(null);
                   setIngredientDetails(null);
                 }}
-                className="btn btn-ghost btn-sm btn-circle"
+                className="btn btn-ghost btn-circle"
               >
-                <X className="w-4 h-4" />
+                <X className="w-6 h-6" />
               </button>
             </div>
             
