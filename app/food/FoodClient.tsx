@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useHealth } from '../context/HealthContext';
 import { nutritionDatabase } from '../services/nutritionDatabase';
 import AppLayout from '../components/layout/AppLayout';
-import BarcodeScanner from '../components/ui/BarcodeScanner';
 import FoodCameraModal from './FoodCameraModal';
 import CalorieRing from '../components/ui/CalorieRing';
 import MacroBreakdown from '../components/ui/MacroBreakdown';
@@ -28,7 +27,6 @@ export default function FoodClient() {
   const { state, actions } = useHealth();
   const { showSuccess, showError, showWarning, ToastContainer } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showAIScanner, setShowAIScanner] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -148,48 +146,6 @@ export default function FoodClient() {
     } catch (error) {
       console.error('Search failed:', error);
       setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleBarcodeScanned = async (barcode: string) => {
-    setShowBarcodeScanner(false);
-    setIsSearching(true);
-    
-    try {
-      const result = await nutritionDatabase.searchByBarcode(barcode);
-      if (result) {
-        // Auto-fill the form with barcode result
-        setNewEntry({
-          name: result.name,
-          calories: result.calories,
-          protein: result.protein,
-          carbs: result.carbs,
-          fat: result.fat,
-          fiber: result.fiber,
-          sugar: result.sugar,
-          sodium: result.sodium,
-          mealType: 'snack',
-          portionMultiplier: 1,
-          portionUnit: 'serving',
-          baseCalories: result.calories,
-          baseProtein: result.protein,
-          baseCarbs: result.carbs,
-          baseFat: result.fat,
-          baseFiber: result.fiber,
-          baseSugar: result.sugar,
-          baseSodium: result.sodium,
-          showManualNutrition: false,
-        });
-        setShowAddModal(true);
-        showSuccess('Product Found', `${result.name} has been loaded from barcode.`);
-      } else {
-        showWarning('Product Not Found', 'Please add the nutrition information manually.');
-      }
-    } catch (error) {
-      console.error('Barcode lookup failed:', error);
-      showError('Barcode Scan Failed', 'Please try scanning again or add manually.');
     } finally {
       setIsSearching(false);
     }
@@ -319,33 +275,25 @@ export default function FoodClient() {
           <div className="flex gap-2 w-full sm:w-auto">
             <button
               onClick={() => setShowAddModal(true)}
-              className="btn btn-primary btn-sm flex-1 sm:flex-none gap-2"
+              className="btn btn-primary btn-sm flex-none gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-6 h-6" />
               <span className="hidden sm:inline">Add Food</span>
               <span className="sm:hidden">Add</span>
             </button>
-            <button 
+            <button
               onClick={() => setShowAIScanner(true)}
-              className="btn btn-secondary btn-sm flex-1 sm:flex-none gap-2"
+              className="btn btn-secondary btn-sm flex-none gap-2"
             >
-              <Zap className="w-4 h-4" />
+              <Zap className="w-6 h-6" />
               <span className="hidden sm:inline">AI Scan</span>
               <span className="sm:hidden">AI</span>
             </button>
-            <button 
-              onClick={() => setShowBarcodeScanner(true)}
-              className="btn btn-outline btn-sm flex-1 sm:flex-none gap-2"
-            >
-              <Camera className="w-4 h-4" />
-              <span className="hidden sm:inline">Barcode</span>
-              <span className="sm:hidden">Scan</span>
-            </button>
-            <button 
+            <button
               onClick={() => setShowSavedMeals(true)}
-              className="btn btn-ghost btn-sm flex-1 sm:flex-none gap-2"
+              className="btn btn-ghost btn-sm flex-none gap-2"
             >
-              <Bookmark className="w-4 h-4" />
+              <Bookmark className="w-6 h-6" />
               <span className="hidden sm:inline">Saved</span>
               <span className="sm:hidden">Saved</span>
             </button>
@@ -622,289 +570,6 @@ export default function FoodClient() {
         onClose={() => setShowAIScanner(false)}
         onFoodAdded={handleAIFoodAdded}
       />
-
-      {/* Barcode Scanner Modal */}
-      <BarcodeScanner
-        isOpen={showBarcodeScanner}
-        onScanSuccess={handleBarcodeScanned}
-        onClose={() => setShowBarcodeScanner(false)}
-      />
-
-      {/* Add Food Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-base-100 rounded-2xl shadow-2xl w-[90vw] max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Add Food Entry</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="label">
-                    <span className="label-text">Food Name</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={newEntry.name}
-                    onChange={(e) => setNewEntry({ ...newEntry, name: e.target.value })}
-                    placeholder="Enter food name"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">
-                    <span className="label-text">Meal Type</span>
-                  </label>
-                  <select
-                    className="select select-bordered w-full"
-                    value={newEntry.mealType}
-                    onChange={(e) => setNewEntry({ ...newEntry, mealType: e.target.value as FoodEntry['mealType'] })}
-                  >
-                    {MEAL_TYPES.map((meal) => (
-                      <option key={meal.value} value={meal.value}>
-                        {meal.icon} {meal.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Portion Size Control */}
-                <div>
-                  <label className="label">
-                    <span className="label-text">Portion Size</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      className="input input-bordered flex-1"
-                      value={newEntry.portionMultiplier || 1}
-                      onChange={(e) => {
-                        const multiplier = parseFloat(e.target.value) || 1;
-                        const baseCalories = newEntry.baseCalories || newEntry.calories;
-                        const baseProtein = newEntry.baseProtein || newEntry.protein;
-                        const baseCarbs = newEntry.baseCarbs || newEntry.carbs;
-                        const baseFat = newEntry.baseFat || newEntry.fat;
-                        const baseFiber = newEntry.baseFiber || newEntry.fiber;
-                        const baseSugar = newEntry.baseSugar || newEntry.sugar;
-                        const baseSodium = newEntry.baseSodium || newEntry.sodium;
-                        
-                        setNewEntry({ 
-                          ...newEntry, 
-                          portionMultiplier: multiplier,
-                          baseCalories: baseCalories,
-                          baseProtein: baseProtein,
-                          baseCarbs: baseCarbs,
-                          baseFat: baseFat,
-                          baseFiber: baseFiber,
-                          baseSugar: baseSugar,
-                          baseSodium: baseSodium,
-                          calories: Math.round(baseCalories * multiplier),
-                          protein: Math.round(baseProtein * multiplier * 10) / 10,
-                          carbs: Math.round(baseCarbs * multiplier * 10) / 10,
-                          fat: Math.round(baseFat * multiplier * 10) / 10,
-                          fiber: Math.round(baseFiber * multiplier * 10) / 10,
-                          sugar: Math.round(baseSugar * multiplier * 10) / 10,
-                          sodium: Math.round(baseSodium * multiplier)
-                        });
-                      }}
-                      placeholder="1.0"
-                    />
-                    <select 
-                      className="select select-bordered"
-                      value={newEntry.portionUnit || 'serving'}
-                      onChange={(e) => setNewEntry({ ...newEntry, portionUnit: e.target.value as FoodEntry['portionUnit'] })}
-                    >
-                      <option value="serving">servings</option>
-                      <option value="cup">cups</option>
-                      <option value="piece">pieces</option>
-                      <option value="slice">slices</option>
-                      <option value="gram">grams</option>
-                      <option value="oz">oz</option>
-                    </select>
-                  </div>
-                  <p className="text-xs text-base-content/60 mt-1">
-                    Adjust portion size to match what you're eating
-                  </p>
-                </div>
-
-                {/* Nutrition Preview */}
-                <div className="bg-base-200 p-4 rounded-lg">
-                  <h4 className="font-semibold mb-3">Nutrition Facts</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex justify-between">
-                      <span>Calories:</span>
-                      <span className="font-semibold">{newEntry.calories}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Protein:</span>
-                      <span className="font-semibold">{newEntry.protein}g</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Carbs:</span>
-                      <span className="font-semibold">{newEntry.carbs}g</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Fat:</span>
-                      <span className="font-semibold">{newEntry.fat}g</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Fiber:</span>
-                      <span className="font-semibold">{newEntry.fiber}g</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Sugar:</span>
-                      <span className="font-semibold">{newEntry.sugar}g</span>
-                    </div>
-                    <div className="flex justify-between col-span-2">
-                      <span>Sodium:</span>
-                      <span className="font-semibold">{newEntry.sodium}mg</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Manual Entry Option (collapsible) */}
-                <div className="border-t pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setNewEntry({ ...newEntry, showManualNutrition: !newEntry.showManualNutrition })}
-                    className="btn btn-ghost btn-sm w-full"
-                  >
-                    {newEntry.showManualNutrition ? 'Hide' : 'Show'} Manual Nutrition Entry
-                  </button>
-                  
-                  {newEntry.showManualNutrition && (
-                    <div className="mt-4 space-y-4">
-                      <p className="text-sm text-warning">
-                        ⚠️ Manual entry: Enter nutrition values per serving
-                      </p>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">
-                            <span className="label-text">Calories</span>
-                          </label>
-                          <input
-                            type="number"
-                            className="input input-bordered w-full"
-                            value={newEntry.calories || ''}
-                            onChange={(e) => setNewEntry({ ...newEntry, calories: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="label">
-                            <span className="label-text">Protein (g)</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            className="input input-bordered w-full"
-                            value={newEntry.protein || ''}
-                            onChange={(e) => setNewEntry({ ...newEntry, protein: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">
-                            <span className="label-text">Carbs (g)</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            className="input input-bordered w-full"
-                            value={newEntry.carbs || ''}
-                            onChange={(e) => setNewEntry({ ...newEntry, carbs: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="label">
-                            <span className="label-text">Fat (g)</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            className="input input-bordered w-full"
-                            value={newEntry.fat || ''}
-                            onChange={(e) => setNewEntry({ ...newEntry, fat: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">
-                            <span className="label-text">Fiber (g)</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            className="input input-bordered w-full"
-                            value={newEntry.fiber || ''}
-                            onChange={(e) => setNewEntry({ ...newEntry, fiber: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="label">
-                            <span className="label-text">Sugar (g)</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            className="input input-bordered w-full"
-                            value={newEntry.sugar || ''}
-                            onChange={(e) => setNewEntry({ ...newEntry, sugar: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="label">
-                          <span className="label-text">Sodium (mg)</span>
-                        </label>
-                        <input
-                          type="number"
-                          className="input input-bordered w-full"
-                          value={newEntry.sodium || ''}
-                          onChange={(e) => setNewEntry({ ...newEntry, sodium: parseFloat(e.target.value) || 0 })}
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-6">
-                <button
-                  onClick={handleAddEntry}
-                  className="btn btn-primary flex-1"
-                  disabled={!newEntry.name || !newEntry.calories}
-                >
-                  Add Food
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetNewEntry();
-                  }}
-                  className="btn btn-outline flex-1"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Food Detail Modal */}
       <FoodDetailModal
