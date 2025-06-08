@@ -314,8 +314,11 @@ export default function BarcodeScanner({
     setFacingMode(current => current === 'user' ? 'environment' : 'user');
   };
 
-  // Add iOS PWA fallback handlers: use file input when BarcodeDetector not supported in PWA
-  const isIosPwa = permissionService.isIOSPWA();
+  // Detect if browser supports live camera & BarcodeDetector
+  const supportsCamera = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+  const supportsBarcodeDetector = typeof window !== 'undefined' && 'BarcodeDetector' in window;
+  const useLiveScanning = supportsCamera && supportsBarcodeDetector;
+
   const handleFileInputChange = async (e: ChangeEvent<HTMLInputElement>) => {
     setError('');
     setShowManualEntry(false);
@@ -447,7 +450,37 @@ export default function BarcodeScanner({
             </div>
           )}
 
-          {permissionStatus === 'granted' && !isIosPwa && (
+          {permissionStatus === 'granted' && !useLiveScanning && (
+            <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+              <p className="text-sm text-base-content/60 mb-2">Tap the button to open camera and capture the barcode</p>
+              <input
+                id="barcode-file-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileInputChange}
+                className="hidden"
+                disabled={isScanning}
+              />
+              <label
+                htmlFor="barcode-file-input"
+                className={`btn btn-primary btn-circle btn-lg ${isScanning ? 'btn-disabled' : ''}`}
+              >
+                {isScanning ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+              </label>
+              {error && (
+                <div className="alert alert-error">
+                  <AlertTriangle className="w-5 h-5" />
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+              <button onClick={() => setShowManualEntry(true)} className="btn btn-outline btn-sm">
+                Enter Barcode Manually
+              </button>
+            </div>
+          )}
+
+          {permissionStatus === 'granted' && useLiveScanning && (
             <div className="flex-1 flex flex-col space-y-4">
               {/* Instructions */}
               <div className="bg-primary/10 p-3 rounded-lg">
@@ -573,35 +606,6 @@ export default function BarcodeScanner({
                   <p className="text-sm">{error}</p>
                 </div>
               )}
-            </div>
-          )}
-          {permissionStatus === 'granted' && isIosPwa && (
-            <div className="flex-1 flex flex-col items-center justify-center space-y-4">
-              <p className="text-sm text-base-content/60 mb-2">Tap the button to open camera and capture the barcode</p>
-              <input
-                id="barcode-file-input"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileInputChange}
-                className="hidden"
-                disabled={isScanning}
-              />
-              <label
-                htmlFor="barcode-file-input"
-                className={`btn btn-primary btn-circle btn-lg ${isScanning ? 'btn-disabled' : ''}`}
-              >
-                {isScanning ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
-              </label>
-              {error && (
-                <div className="alert alert-error">
-                  <AlertTriangle className="w-5 h-5" />
-                  <p className="text-sm">{error}</p>
-                </div>
-              )}
-              <button onClick={() => setShowManualEntry(true)} className="btn btn-outline btn-sm">
-                Enter Barcode Manually
-              </button>
             </div>
           )}
         </div>
