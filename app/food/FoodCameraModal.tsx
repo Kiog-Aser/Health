@@ -123,7 +123,29 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
         return;
       }
 
-      // Try to get camera stream with permission service
+      // If permission is granted, try to get stream with specific constraints
+      if (permissionState === 'granted' && facingMode !== 'environment') {
+        console.log('🔄 Getting camera stream with facing mode:', facingMode);
+        const constraints = {
+          video: {
+            facingMode: facingMode,
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          }
+        };
+        
+        const { granted, stream: constraintStream } = await permissionService.getCameraStreamWithConstraints(constraints);
+        
+        if (granted && constraintStream) {
+          console.log('✅ Got camera stream with constraints');
+          setStream(constraintStream);
+          setupVideoElement(constraintStream);
+          setPermissionStatus('granted');
+          return;
+        }
+      }
+
+      // Default: Request camera permission (this will show dialog if needed)
       const { granted, stream: newStream } = await permissionService.requestCameraPermission();
       
       if (!granted || !newStream) {
@@ -133,33 +155,8 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
       }
 
       console.log('✅ Got camera stream via permission service');
-
-      // Apply facing mode constraint if needed
-      if (facingMode !== 'environment') {
-        try {
-          const constraints = {
-            video: {
-              facingMode: facingMode,
-              width: { ideal: 1280, min: 640 },
-              height: { ideal: 720, min: 480 }
-            }
-          };
-
-          // Stop the current stream and get a new one with the right facing mode
-          newStream.getTracks().forEach(track => track.stop());
-          const facingModeStream = await navigator.mediaDevices.getUserMedia(constraints);
-          setStream(facingModeStream);
-          setupVideoElement(facingModeStream);
-        } catch (error) {
-          console.log('⚠️ Facing mode constraint failed, using default stream');
-          setStream(newStream);
-          setupVideoElement(newStream);
-        }
-      } else {
-        setStream(newStream);
-        setupVideoElement(newStream);
-      }
-
+      setStream(newStream);
+      setupVideoElement(newStream);
       setPermissionStatus('granted');
 
     } catch (err: any) {
@@ -260,6 +257,8 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    // Also stop the active stream in permission service
+    permissionService.stopActiveStream();
   };
 
   const toggleCamera = () => {

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Zap, Camera, AlertTriangle, RotateCcw, RefreshCw, Loader2, Search } from 'lucide-react';
+import { permissionService } from '../../services/permissionService';
 
 interface BarcodeScannerProps {
   onScanSuccess: (barcode: string) => void;
@@ -45,6 +46,8 @@ export default function BarcodeScanner({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    // Also stop the active stream in permission service
+    permissionService.stopActiveStream();
     setIsScanning(false);
     setVideoReady(false);
     setPermissionStatus('pending');
@@ -68,6 +71,17 @@ export default function BarcodeScanner({
 
       console.log('🚀 Starting barcode scanner camera initialization with facing mode:', facingMode);
       
+      // Check permission state first
+      const permissionState = await permissionService.checkCameraPermission();
+      console.log('📷 Camera permission state:', permissionState);
+      
+      if (permissionState === 'denied') {
+        setPermissionStatus('denied');
+        setError('Camera access denied. Please allow camera permissions in your browser settings and reload the app.');
+        return;
+      }
+
+      // Try to get camera stream with specific constraints
       const constraints = {
         video: {
           facingMode: facingMode,
@@ -76,11 +90,15 @@ export default function BarcodeScanner({
         }
       };
 
-      console.log('Requesting camera access with constraints:', constraints);
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const { granted, stream: newStream } = await permissionService.getCameraStreamWithConstraints(constraints);
       
-      console.log('✅ Got camera stream:', newStream);
+      if (!granted || !newStream) {
+        setPermissionStatus('denied');
+        setError('Unable to access camera. Please ensure camera permissions are granted.');
+        return;
+      }
 
+      console.log('✅ Got camera stream via permission service');
       setStream(newStream);
       setPermissionStatus('granted');
 
@@ -144,7 +162,13 @@ export default function BarcodeScanner({
         }
       };
 
-      const newStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+      const { granted, stream: newStream } = await permissionService.getCameraStreamWithConstraints(basicConstraints);
+      
+      if (!granted || !newStream) {
+        setError('Unable to access camera with any settings.');
+        return;
+      }
+      
       setStream(newStream);
       setPermissionStatus('granted');
       setError('');

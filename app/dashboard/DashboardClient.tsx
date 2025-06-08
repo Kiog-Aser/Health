@@ -9,6 +9,7 @@ import CalorieRing from '../components/ui/CalorieRing';
 import MacroBreakdown from '../components/ui/MacroBreakdown';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import FoodDetailModal from '../components/ui/FoodDetailModal';
+import CameraDebugger from '../components/CameraDebugger';
 import { FoodEntry } from '../types';
 
 export default function DashboardClient() {
@@ -270,6 +271,9 @@ export default function DashboardClient() {
             </div>
           </div>
         </div>
+
+        {/* Camera Debugger - Temporary for Testing */}
+        <CameraDebugger />
       </div>
 
       {/* Food Detail Modal */}
