@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, ChangeEvent } from 'react';
 import { Camera, X, RotateCcw, RefreshCw, Zap, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { FoodEntry } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -374,7 +374,14 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
     setCapturedImage(null);
   };
 
-
+  const isIosPwa = permissionService.isIOSPWA();
+  const handleFileInputChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCapturedImage(file);
+      await analyzeFood(file);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -483,7 +490,7 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
               </div>
             )}
 
-            {permissionStatus === 'granted' && (
+            {permissionStatus === 'granted' && !isIosPwa && (
               <div className="flex-1 flex flex-col space-y-4">
                 {/* Instructions */}
                 <div className="bg-primary/10 p-3 rounded-lg">
@@ -600,6 +607,31 @@ export default function FoodCameraModal({ isOpen, onClose, onFoodAdded }: FoodCa
                     <p className="text-sm">{error}</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {permissionStatus === 'granted' && isIosPwa && (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                <p className="text-sm text-base-content/60 mb-2">Tap the button to open camera</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  id="ios-camera-input"
+                  disabled={isCapturing || isAnalyzing}
+                />
+                <label
+                  htmlFor="ios-camera-input"
+                  className={`btn btn-primary btn-circle btn-lg ${isCapturing || isAnalyzing ? 'btn-disabled' : ''}`}
+                >
+                  {isCapturing || isAnalyzing ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <Camera className="w-6 h-6" />
+                  )}
+                </label>
               </div>
             )}
           </div>
