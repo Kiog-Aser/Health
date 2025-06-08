@@ -24,7 +24,7 @@ export default function WeeklyCheckin({ onComplete }: WeeklyCheckinProps) {
     waistCircumference: 0,
     chestCircumference: 0,
     armCircumference: 0,
-    notes: '',
+    notes: '', 
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastCheckin, setLastCheckin] = useState<Date | null>(null);
