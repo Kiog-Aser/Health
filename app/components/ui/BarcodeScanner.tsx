@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, ChangeEvent } from 'react';
 import { X, Zap, Camera, AlertTriangle, RotateCcw, RefreshCw, Loader2, Search } from 'lucide-react';
 import { permissionService } from '../../services/permissionService';
 
@@ -314,6 +314,51 @@ export default function BarcodeScanner({
     setFacingMode(current => current === 'user' ? 'environment' : 'user');
   };
 
+  // Add iOS PWA fallback handlers: use file input when BarcodeDetector not supported in PWA
+  const isIosPwa = permissionService.isIOSPWA();
+  const handleFileInputChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    setError('');
+    setShowManualEntry(false);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsScanning(true);
+      try {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise(resolve => { img.onload = resolve; });
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (canvas && ctx) {
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          ctx.drawImage(img, 0, 0);
+          if ('BarcodeDetector' in window) {
+            const detector = new (window as any).BarcodeDetector({
+              formats: [
+                'code_128','code_39','code_93','codabar','ean_13',
+                'ean_8','itf','upc_a','upc_e','qr_code',
+                'data_matrix','aztec','pdf417'
+              ]
+            });
+            const barcodes = await detector.detect(canvas);
+            if (barcodes.length > 0) {
+              handleBarcodeFound(barcodes[0].rawValue);
+            } else {
+              setError('No barcode found in the selected image.');
+            }
+          } else {
+            setError('Automatic scanning not supported on this device.');
+          }
+        }
+      } catch (err) {
+        console.error('Image scan failed:', err);
+        setError('Failed to scan the image.');
+      } finally {
+        setIsScanning(false);
+      }
+    }
+  };
+
   // Initialize camera when modal opens
   useEffect(() => {
     if (isOpen && !stream) {
@@ -402,7 +447,7 @@ export default function BarcodeScanner({
             </div>
           )}
 
-          {permissionStatus === 'granted' && (
+          {permissionStatus === 'granted' && !isIosPwa && (
             <div className="flex-1 flex flex-col space-y-4">
               {/* Instructions */}
               <div className="bg-primary/10 p-3 rounded-lg">
@@ -528,6 +573,35 @@ export default function BarcodeScanner({
                   <p className="text-sm">{error}</p>
                 </div>
               )}
+            </div>
+          )}
+          {permissionStatus === 'granted' && isIosPwa && (
+            <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+              <p className="text-sm text-base-content/60 mb-2">Tap the button to open camera and capture the barcode</p>
+              <input
+                id="barcode-file-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileInputChange}
+                className="hidden"
+                disabled={isScanning}
+              />
+              <label
+                htmlFor="barcode-file-input"
+                className={`btn btn-primary btn-circle btn-lg ${isScanning ? 'btn-disabled' : ''}`}
+              >
+                {isScanning ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+              </label>
+              {error && (
+                <div className="alert alert-error">
+                  <AlertTriangle className="w-5 h-5" />
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+              <button onClick={() => setShowManualEntry(true)} className="btn btn-outline btn-sm">
+                Enter Barcode Manually
+              </button>
             </div>
           )}
         </div>
