@@ -710,7 +710,7 @@ export default function WorkoutClient() {
                         </button>
                         {isBodyweightExercise(exercise) && <span className="text-sm font-semibold text-gray-500">BW</span>}
                         <div className="flex-1 grid grid-cols-2 gap-4 items-center text-sm pr-2">
-                          <div className="flex items-center gap-1 justify-end">
+                          <div className="flex items-center gap-0.5 justify-end">
                             <input
                               type="number"
                               value={set.weight || ''}
@@ -721,7 +721,7 @@ export default function WorkoutClient() {
                             />
                             <span className="text-base-content/60">kg</span>
                           </div>
-                          <div className="flex items-center gap-1 justify-end">
+                          <div className="flex items-center gap-0.5 justify-end">
                             <input
                               type="number"
                               value={set.reps || ''}
@@ -745,17 +745,22 @@ export default function WorkoutClient() {
                     {/* Working sets */}
                     {exercise.sets.filter(set => !set.isWarmup).map((set) => (
                       <div key={set.id} className="flex items-center gap-3 p-2 rounded-lg bg-base-content/5 mb-2">
-                        <button
-                          onClick={() => completeSet(exerciseIndex, set.id)}
-                          className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${set.isCompleted ? 'bg-success text-success-content' : 'bg-base-content/10 hover:bg-base-content/20'}`}
-                        >
-                          <span className={`text-sm font-bold ${set.isCompleted ? 'text-success-content' : 'text-primary'}`}>
-                            {exercise.sets.filter(s => !s.isWarmup).findIndex(s => s.id === set.id) + 1}
-                          </span>
-                        </button>
+                        <div className="relative">
+                          {set.isPR && (
+                            <span className="absolute -top-2 right-0 text-xs font-bold text-red-500">PR!</span>
+                          )}
+                          <button
+                            onClick={() => completeSet(exerciseIndex, set.id)}
+                            className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${set.isCompleted ? 'bg-success text-success-content' : 'bg-base-content/10 hover:bg-base-content/20'}`}
+                          >
+                            <span className={`text-sm font-bold ${set.isCompleted ? 'text-success-content' : 'text-primary'}`}>
+                              {exercise.sets.filter(s => !s.isWarmup).findIndex(s => s.id === set.id) + 1}
+                            </span>
+                          </button>
+                        </div>
                         {isBodyweightExercise(exercise) && <span className="text-sm font-semibold text-gray-500">BW</span>}
                         <div className="flex-1 grid grid-cols-2 gap-4 items-center text-sm pr-2">
-                          <div className="flex items-center gap-1 justify-end">
+                          <div className="flex items-center gap-0.5 justify-end">
                             <input
                               type="number"
                               value={set.weight || ''}
@@ -765,9 +770,8 @@ export default function WorkoutClient() {
                               disabled={set.isCompleted}
                             />
                             <span className="text-base-content/60">kg</span>
-                            {set.isPR && <span className="ml-1 text-xs font-bold text-red-500">PR!</span>}
                           </div>
-                          <div className="flex items-center gap-1 justify-end">
+                          <div className="flex items-center gap-0.5 justify-end">
                             <input
                               type="number"
                               value={set.reps || ''}
