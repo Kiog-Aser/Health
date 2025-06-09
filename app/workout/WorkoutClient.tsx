@@ -30,7 +30,7 @@ import { exerciseDatabase } from '../services/exerciseDatabase';
 import { workoutHistoryService } from '../services/workoutHistory';
 import { WorkoutEntry, Exercise } from '../types';
 import AppLayout from '../components/layout/AppLayout';
-import MuscleGroupVisualizer from '../components/MuscleGroupVisualizer';
+import AnatomicalMuscleVisualizer from '../components/AnatomicalMuscleVisualizer';
 import { 
   generateWorkoutName,
   formatWorkoutDuration,
@@ -871,7 +871,7 @@ export default function WorkoutClient() {
 
               {/* Muscle Group Visualization */}
               {activeExercises.length > 0 && (
-                <MuscleGroupVisualizer 
+                <AnatomicalMuscleVisualizer 
                   targetedMuscles={getTargetedMuscles()} 
                   className="mb-4"
                 />

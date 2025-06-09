@@ -27,7 +27,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Calendar,
-  Key
+  Key,
+  RefreshCw
 } from 'lucide-react';
 import { databaseService } from '../services/database';
 import { HealthCalculations } from '../utils/healthCalculations';
@@ -35,6 +36,9 @@ import { UserProfile, Goal, BiomarkerEntry, BiomarkerType } from '../types';
 import AppLayout from '../components/layout/AppLayout';
 import { useToast } from '../components/ui/ToastNotification';
 import { notificationService } from '../services/notificationService';
+import { autoBackupService } from '../services/autoBackup';
+import DatabaseConnection from '../components/DatabaseConnection';
+import DatabaseViewer from '../components/DatabaseViewer';
 
 const BIOMARKER_CONFIGS = {
   weight: { name: 'Weight', unit: 'kg', icon: '⚖️', color: 'bg-blue-500' },
@@ -97,6 +101,10 @@ export default function SettingsClient() {
 
   // API Keys state
   const [geminiApiKey, setGeminiApiKey] = useState('');
+
+  // Auto Backup state
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [lastBackupTime, setLastBackupTime] = useState(0);
 
   useEffect(() => {
     loadAllData();
@@ -164,6 +172,10 @@ export default function SettingsClient() {
 
       setGoals(goalsData);
       setBiomarkers(biomarkersData);
+      
+      // Load auto backup settings
+      setAutoBackupEnabled(autoBackupService.isAutoBackupEnabled());
+      setLastBackupTime(autoBackupService.getLastBackupTime());
     } catch (error) {
       console.error('Failed to load data:', error);
       showError('Failed to load settings', 'Please try refreshing the page');
@@ -778,6 +790,119 @@ export default function SettingsClient() {
                       Your API key is stored locally and used for AI-powered food scanning.
                     </span>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Database Connection */}
+            <DatabaseConnection />
+
+            {/* Database Viewer */}
+            <DatabaseViewer />
+
+            {/* Auto Backup */}
+            <div className="health-card">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <RefreshCw className="w-5 h-5 text-primary" />
+                Auto Backup
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Enable/Disable Toggle */}
+                <div className="flex items-center justify-between p-3 bg-base-200/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Automatic Backup</p>
+                    <p className="text-sm text-base-content/60">
+                      Automatically sync your data to your external database daily
+                    </p>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="toggle toggle-primary" 
+                    checked={autoBackupEnabled}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setAutoBackupEnabled(enabled);
+                      if (enabled) {
+                        autoBackupService.enable();
+                        showSuccess('Auto backup enabled', 'Your data will sync automatically every 24 hours');
+                      } else {
+                        autoBackupService.disable();
+                        showSuccess('Auto backup disabled', 'You can still manually sync your data');
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Status Information */}
+                {autoBackupEnabled && (
+                  <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-4 h-4 text-success" />
+                      <span className="text-sm font-medium text-success">Auto Backup Active</span>
+                    </div>
+                    <div className="text-xs text-base-content/70 space-y-1">
+                      {lastBackupTime > 0 ? (
+                        <p>Last backup: {new Date(lastBackupTime).toLocaleString()}</p>
+                      ) : (
+                        <p>No backup performed yet</p>
+                      )}
+                      <p>Next backup: {autoBackupService.getFormattedTimeUntilNextBackup()}</p>
+                    </div>
+                  </div>
+                )}
+
+                {!autoBackupEnabled && (
+                  <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-4 h-4 text-warning" />
+                      <span className="text-sm font-medium text-warning">Auto Backup Disabled</span>
+                    </div>
+                    <p className="text-xs text-base-content/70">
+                      Enable auto backup to keep your data safe and synced across devices
+                    </p>
+                  </div>
+                )}
+
+                {/* Manual Backup Button */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      setIsSaving(true);
+                      try {
+                        const result = await autoBackupService.performManualBackup();
+                        if (result.success) {
+                          setLastBackupTime(Date.now());
+                          showSuccess('Manual backup complete!', result.message);
+                        } else {
+                          showError('Backup failed', result.message);
+                        }
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                    disabled={isSaving}
+                    className="btn btn-outline flex-1"
+                  >
+                    {isSaving ? (
+                      <>
+                        <span className="loading loading-spinner loading-sm"></span>
+                        Backing up...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4" />
+                        Manual Backup
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Help Text */}
+                <div className="text-xs text-base-content/60 bg-info/10 p-3 rounded-lg">
+                  💡 Auto backup requires an active database connection. When enabled, your health data 
+                  will be automatically synced to your external database every 24 hours and whenever 
+                  you add new entries.
                 </div>
               </div>
             </div>

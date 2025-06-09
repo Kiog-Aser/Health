@@ -6,7 +6,7 @@ import { ArrowLeft, Target, Dumbbell } from 'lucide-react';
 import { databaseService } from '../../services/database';
 import { WorkoutEntry } from '../../types';
 import AppLayout from '../../components/layout/AppLayout';
-import MuscleGroupVisualizer from '../../components/MuscleGroupVisualizer';
+import AnatomicalMuscleVisualizer from '../../components/AnatomicalMuscleVisualizer';
 
 interface WorkoutDetailPageProps {
   params: {
@@ -135,6 +135,11 @@ export default function WorkoutDetailPage({ params }: WorkoutDetailPageProps) {
               <Target className="w-5 h-5" />
               Summary
             </h4>
+            <AnatomicalMuscleVisualizer
+              targetedMuscles={getTargetedMuscles()}
+              className="mb-4"
+              showTitle={false}
+            />
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold">{workout.exercises?.length || 0}</div>
@@ -223,7 +228,7 @@ export default function WorkoutDetailPage({ params }: WorkoutDetailPageProps) {
           {getTargetedMuscles().length > 0 && (
             <div className="bg-base-200/30 rounded-xl p-4">
               <h4 className="font-semibold mb-4">Targeted Muscles</h4>
-              <MuscleGroupVisualizer 
+              <AnatomicalMuscleVisualizer 
                 targetedMuscles={getTargetedMuscles()} 
               />
             </div>

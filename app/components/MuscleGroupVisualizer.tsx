@@ -5,6 +5,7 @@ import React from 'react';
 interface MuscleGroupVisualizerProps {
   targetedMuscles: string[];
   className?: string;
+  showTitle?: boolean;
 }
 
 // Muscle group mapping to display names
@@ -42,7 +43,7 @@ const getDisplayMuscles = (targetedMuscles: string[]): string[] => {
   return Array.from(displayMuscles);
 };
 
-export default function MuscleGroupVisualizer({ targetedMuscles, className = "" }: MuscleGroupVisualizerProps) {
+export default function MuscleGroupVisualizer({ targetedMuscles, className = "", showTitle = true }: MuscleGroupVisualizerProps) {
   const displayMuscles = getDisplayMuscles(targetedMuscles);
   
   if (displayMuscles.length === 0) {
@@ -52,7 +53,11 @@ export default function MuscleGroupVisualizer({ targetedMuscles, className = "" 
   return (
     <div className={`${className}`}>
       <div className="text-center">
-        <h4 className="text-sm font-medium text-base-content/60 mb-3">Targeted Muscles</h4>
+        {showTitle && (
+          <h4 className="text-sm font-medium text-base-content/60 mb-3">
+            Targeted Muscles
+          </h4>
+        )}
         <div className="flex justify-center gap-4">
           {/* Front silhouette */}
           <div className="relative w-32 h-48 bg-base-300/20 rounded-2xl border border-base-300/30 overflow-hidden">

@@ -2,7 +2,14 @@
 
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { databaseService } from '../services/database';
+import { autoBackupService } from '../services/autoBackup';
 import { FoodEntry, WorkoutEntry, BiomarkerEntry, DailyStats } from '../types';
+
+interface WaterEntry {
+  id: string;
+  amount: number; // in liters
+  timestamp: number;
+}
 
 interface HealthState {
   // Daily tracking
@@ -10,6 +17,7 @@ interface HealthState {
   foodEntries: FoodEntry[];
   workoutEntries: WorkoutEntry[];
   biomarkerEntries: BiomarkerEntry[];
+  waterEntries: WaterEntry[];
   
   // User goals
   nutritionGoals: {
@@ -51,6 +59,8 @@ type HealthAction =
   | { type: 'REMOVE_FOOD_ENTRY'; payload: string }
   | { type: 'SET_WORKOUT_ENTRIES'; payload: WorkoutEntry[] }
   | { type: 'ADD_WORKOUT_ENTRY'; payload: WorkoutEntry }
+  | { type: 'SET_WATER_ENTRIES'; payload: WaterEntry[] }
+  | { type: 'ADD_WATER_ENTRY'; payload: WaterEntry }
   | { type: 'SET_NUTRITION_GOALS'; payload: HealthState['nutritionGoals'] }
   | { type: 'UPDATE_DAILY_PROGRESS' }
   | { type: 'CALCULATE_HEALTH_SCORE' }
@@ -61,6 +71,7 @@ const initialState: HealthState = {
   foodEntries: [],
   workoutEntries: [],
   biomarkerEntries: [],
+  waterEntries: [],
   nutritionGoals: {
     calories: 2200,
     protein: 165,
@@ -118,6 +129,15 @@ function healthReducer(state: HealthState, action: HealthAction): HealthState {
         workoutEntries: [action.payload, ...state.workoutEntries]
       };
       
+    case 'SET_WATER_ENTRIES':
+      return { ...state, waterEntries: action.payload };
+      
+    case 'ADD_WATER_ENTRY':
+      return {
+        ...state,
+        waterEntries: [action.payload, ...state.waterEntries]
+      };
+      
     case 'SET_NUTRITION_GOALS':
       return { ...state, nutritionGoals: action.payload };
       
@@ -131,6 +151,7 @@ function healthReducer(state: HealthState, action: HealthAction): HealthState {
       const caloriesBurned = state.workoutEntries.reduce((sum, entry) => sum + entry.calories, 0);
       
       const workoutMinutes = state.workoutEntries.reduce((sum, entry) => sum + entry.duration, 0);
+      const totalWater = state.waterEntries.reduce((sum, entry) => sum + entry.amount, 0);
       
       return {
         ...state,
@@ -146,7 +167,7 @@ function healthReducer(state: HealthState, action: HealthAction): HealthState {
             fat: totalFat,
             fiber: totalFiber,
           },
-          water: 0, // This would come from water tracking
+          water: totalWater,
           steps: 0,  // This would come from step tracking
           workoutMinutes,
         }
@@ -190,6 +211,7 @@ const HealthContext = createContext<{
     addFoodEntry: (entry: FoodEntry) => Promise<void>;
     removeFoodEntry: (id: string) => Promise<void>;
     addWorkoutEntry: (entry: WorkoutEntry) => Promise<void>;
+    addWaterEntry: (amount: number) => Promise<void>;
     setDate: (date: string) => void;
     refreshData: () => Promise<void>;
     setNutritionGoals: (goals: HealthState['nutritionGoals']) => void;
@@ -208,7 +230,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     dispatch({ type: 'UPDATE_DAILY_PROGRESS' });
     dispatch({ type: 'CALCULATE_HEALTH_SCORE' });
-  }, [state.foodEntries, state.workoutEntries, state.nutritionGoals]);
+  }, [state.foodEntries, state.workoutEntries, state.waterEntries, state.nutritionGoals]);
 
   const loadDataForDate = async (date: string) => {
     try {
@@ -218,13 +240,24 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       const startOfDay = new Date(date).setHours(0, 0, 0, 0);
       const endOfDay = new Date(date).setHours(23, 59, 59, 999);
       
-      const [foodEntries, workoutEntries] = await Promise.all([
+      const [foodEntries, workoutEntries, biomarkerEntries] = await Promise.all([
         databaseService.getFoodEntries(startOfDay, endOfDay),
         databaseService.getWorkoutEntries(startOfDay, endOfDay),
+        databaseService.getBiomarkerEntries(undefined, startOfDay, endOfDay),
       ]);
+      
+      // Extract water entries from biomarker entries
+      const waterEntries: WaterEntry[] = biomarkerEntries
+        .filter(entry => entry.type === 'water_intake')
+        .map(entry => ({
+          id: entry.id,
+          amount: entry.value,
+          timestamp: entry.timestamp
+        }));
       
       dispatch({ type: 'SET_FOOD_ENTRIES', payload: foodEntries });
       dispatch({ type: 'SET_WORKOUT_ENTRIES', payload: workoutEntries });
+      dispatch({ type: 'SET_WATER_ENTRIES', payload: waterEntries });
       
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -238,6 +271,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       try {
         await databaseService.addFoodEntry(entry);
         dispatch({ type: 'ADD_FOOD_ENTRY', payload: entry });
+        // Trigger auto backup after data change
+        autoBackupService.triggerBackupOnDataChange();
       } catch (error) {
         console.error('Failed to add food entry:', error);
         throw error;
@@ -258,8 +293,37 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       try {
         await databaseService.addWorkoutEntry(entry);
         dispatch({ type: 'ADD_WORKOUT_ENTRY', payload: entry });
+        // Trigger auto backup after data change
+        autoBackupService.triggerBackupOnDataChange();
       } catch (error) {
         console.error('Failed to add workout entry:', error);
+        throw error;
+      }
+    },
+
+    addWaterEntry: async (amount: number) => {
+      try {
+        const waterEntry: WaterEntry = {
+          id: Date.now().toString(),
+          amount,
+          timestamp: Date.now()
+        };
+        
+        // For now, we'll store water as biomarker entries until we have dedicated water storage
+        const biomarkerEntry: BiomarkerEntry = {
+          id: waterEntry.id,
+          type: 'water_intake',
+          value: amount,
+          unit: 'L',
+          timestamp: waterEntry.timestamp
+        };
+        
+        await databaseService.addBiomarkerEntry(biomarkerEntry);
+        dispatch({ type: 'ADD_WATER_ENTRY', payload: waterEntry });
+        // Trigger auto backup after data change
+        autoBackupService.triggerBackupOnDataChange();
+      } catch (error) {
+        console.error('Failed to add water entry:', error);
         throw error;
       }
     },

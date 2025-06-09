@@ -10,6 +10,7 @@ import MacroBreakdown from '../components/ui/MacroBreakdown';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import FoodDetailModal from '../components/ui/FoodDetailModal';
 import CameraDebugger from '../components/CameraDebugger';
+import WaterTrackerOverlay from '../components/WaterTrackerOverlay';
 import { FoodEntry } from '../types';
 
 export default function DashboardClient() {
@@ -18,6 +19,7 @@ export default function DashboardClient() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFood, setSelectedFood] = useState<FoodEntry | null>(null);
   const [showFoodDetail, setShowFoodDetail] = useState(false);
+  const [showWaterOverlay, setShowWaterOverlay] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -121,13 +123,17 @@ export default function DashboardClient() {
                 <div className="text-sm text-blue-600/70">Steps</div>
               </div>
 
-              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/30">
+              <button
+                onClick={() => setShowWaterOverlay(true)}
+                className="text-center p-4 rounded-xl bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/30 hover:scale-105 transition-transform duration-200 border-2 border-transparent hover:border-cyan-300"
+              >
                 <div className="flex justify-center mb-2">
                   <Droplets className="w-6 h-6 text-cyan-600" />
                 </div>
-                <div className="text-2xl font-bold text-cyan-600">{state.dailyProgress.water}L</div>
+                <div className="text-2xl font-bold text-cyan-600">{state.dailyProgress.water.toFixed(1)}L</div>
                 <div className="text-sm text-cyan-600/70">Water</div>
-              </div>
+                <div className="text-xs text-cyan-600/50 mt-1">Tap to add</div>
+              </button>
             </div>
           </div>
         </div>
@@ -138,7 +144,7 @@ export default function DashboardClient() {
             <Plus className="w-5 h-5 text-primary" />
             Quick Actions
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <button 
               onClick={() => router.push('/food')}
               className="group flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
@@ -152,6 +158,13 @@ export default function DashboardClient() {
             >
               <Dumbbell className="w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-sm font-medium text-center">Log Workout</span>
+            </button>
+            <button 
+              onClick={() => setShowWaterOverlay(true)}
+              className="group flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
+            >
+              <Droplets className="w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-center">Add Water</span>
             </button>
             <button 
               onClick={() => router.push('/progress')}
@@ -281,6 +294,12 @@ export default function DashboardClient() {
         food={selectedFood}
         isOpen={showFoodDetail}
         onClose={handleCloseFoodDetail}
+      />
+
+      {/* Water Tracker Overlay */}
+      <WaterTrackerOverlay
+        isOpen={showWaterOverlay}
+        onClose={() => setShowWaterOverlay(false)}
       />
     </AppLayout>
   );
