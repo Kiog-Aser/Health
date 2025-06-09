@@ -1,33 +1,35 @@
 import { externalDatabaseService } from './externalDatabase';
 
-export class AutoBackupService {
-  private static instance: AutoBackupService;
+export class AutoSyncService {
+  private static instance: AutoSyncService;
   private isEnabled = false;
-  private backupInterval: NodeJS.Timeout | null = null;
-  private lastBackupTime = 0;
-  private readonly BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-  private readonly MIN_BACKUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes minimum between backups
+  private syncInterval: NodeJS.Timeout | null = null;
+  private lastSyncTime = 0;
+  private readonly SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes minimum between syncs
+  private readonly PULL_CHECK_INTERVAL_MS = 15 * 60 * 1000; // Check for remote changes every 15 minutes
 
-  static getInstance(): AutoBackupService {
-    if (!AutoBackupService.instance) {
-      AutoBackupService.instance = new AutoBackupService();
+  static getInstance(): AutoSyncService {
+    if (!AutoSyncService.instance) {
+      AutoSyncService.instance = new AutoSyncService();
     }
-    return AutoBackupService.instance;
+    return AutoSyncService.instance;
   }
 
   private constructor() {
     this.loadSettings();
-    this.startAutoBackup();
+    this.startAutoSync();
+    this.startPullChecks();
   }
 
   private loadSettings() {
     if (typeof window === 'undefined') return;
     
-    const settings = localStorage.getItem('autoBackupSettings');
+    const settings = localStorage.getItem('autoSyncSettings');
     if (settings) {
-      const { enabled, lastBackupTime } = JSON.parse(settings);
+      const { enabled, lastSyncTime } = JSON.parse(settings);
       this.isEnabled = enabled;
-      this.lastBackupTime = lastBackupTime || 0;
+      this.lastSyncTime = lastSyncTime || 0;
     } else {
       // Default to enabled if user has database connection
       this.isEnabled = externalDatabaseService.isConnectedToDatabase();
@@ -39,113 +41,190 @@ export class AutoBackupService {
     
     const settings = {
       enabled: this.isEnabled,
-      lastBackupTime: this.lastBackupTime
+      lastSyncTime: this.lastSyncTime
     };
-    localStorage.setItem('autoBackupSettings', JSON.stringify(settings));
+    localStorage.setItem('autoSyncSettings', JSON.stringify(settings));
   }
 
   enable() {
     this.isEnabled = true;
     this.saveSettings();
-    this.startAutoBackup();
-    console.log('Auto backup enabled');
+    this.startAutoSync();
+    this.startPullChecks();
+    console.log('Auto sync enabled');
   }
 
   disable() {
     this.isEnabled = false;
     this.saveSettings();
-    this.stopAutoBackup();
-    console.log('Auto backup disabled');
+    this.stopAutoSync();
+    console.log('Auto sync disabled');
   }
 
-  isAutoBackupEnabled(): boolean {
+  isAutoSyncEnabled(): boolean {
     return this.isEnabled;
   }
 
-  getLastBackupTime(): number {
-    return this.lastBackupTime;
+  // Keep this method for backward compatibility
+  isAutoBackupEnabled(): boolean {
+    return this.isAutoSyncEnabled();
   }
 
-  private startAutoBackup() {
+  getLastSyncTime(): number {
+    return this.lastSyncTime;
+  }
+
+  // Keep this method for backward compatibility
+  getLastBackupTime(): number {
+    return this.getLastSyncTime();
+  }
+
+  private startAutoSync() {
     if (!this.isEnabled || typeof window === 'undefined') return;
 
     // Clear any existing interval
-    if (this.backupInterval) {
-      clearInterval(this.backupInterval);
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
     }
 
-    // Check every hour for backup opportunity
-    this.backupInterval = setInterval(() => {
-      this.checkAndBackup();
+    // Check every hour for sync opportunity
+    this.syncInterval = setInterval(() => {
+      this.checkAndSync();
     }, 60 * 60 * 1000); // Check every hour
 
     // Also check immediately if enough time has passed
-    this.checkAndBackup();
+    this.checkAndSync();
   }
 
-  private stopAutoBackup() {
-    if (this.backupInterval) {
-      clearInterval(this.backupInterval);
-      this.backupInterval = null;
+  private startPullChecks() {
+    if (!this.isEnabled || typeof window === 'undefined') return;
+
+    // Periodically check for remote changes and pull them
+    setInterval(() => {
+      this.checkAndPullRemoteChanges();
+    }, this.PULL_CHECK_INTERVAL_MS);
+  }
+
+  private stopAutoSync() {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
     }
   }
 
-  private async checkAndBackup() {
+  private async checkAndSync() {
     if (!this.isEnabled || !externalDatabaseService.isConnectedToDatabase()) {
       return;
     }
 
     const now = Date.now();
-    const timeSinceLastBackup = now - this.lastBackupTime;
+    const timeSinceLastSync = now - this.lastSyncTime;
 
-    // Only backup if enough time has passed
-    if (timeSinceLastBackup >= this.BACKUP_INTERVAL_MS) {
-      await this.performBackup();
+    // Only sync if enough time has passed
+    if (timeSinceLastSync >= this.SYNC_INTERVAL_MS) {
+      await this.performBidirectionalSync();
     }
   }
 
   // This can be called manually when data changes
-  async triggerBackupOnDataChange() {
+  async triggerSyncOnDataChange() {
     if (!this.isEnabled || !externalDatabaseService.isConnectedToDatabase()) {
       return;
     }
 
     const now = Date.now();
-    const timeSinceLastBackup = now - this.lastBackupTime;
+    const timeSinceLastSync = now - this.lastSyncTime;
 
-    // Don't backup too frequently to avoid spam
-    if (timeSinceLastBackup >= this.MIN_BACKUP_INTERVAL_MS) {
-      await this.performBackup();
+    // Don't sync too frequently to avoid spam
+    if (timeSinceLastSync >= this.MIN_SYNC_INTERVAL_MS) {
+      await this.performBidirectionalSync();
     }
   }
 
-  private async performBackup() {
+  // Keep this method for backward compatibility
+  async triggerBackupOnDataChange() {
+    return this.triggerSyncOnDataChange();
+  }
+
+  /**
+   * Check for remote changes and pull them if any exist
+   */
+  private async checkAndPullRemoteChanges() {
+    if (!this.isEnabled || !externalDatabaseService.isConnectedToDatabase()) {
+      return;
+    }
+
     try {
-      console.log('Auto backup: Starting automatic data sync...');
+      // Check if there are any local changes that need to be pushed first
+      const hasLocalChanges = await externalDatabaseService.hasLocalChanges();
+      
+      if (hasLocalChanges) {
+        // If we have local changes, do a full bidirectional sync
+        await this.performBidirectionalSync();
+      } else {
+        // Otherwise just pull remote changes
+        const result = await externalDatabaseService.pullRemoteData();
+        
+        if (result.success && result.pullCounts) {
+          const totalPulled = Object.values(result.pullCounts).reduce((sum, count) => sum + count, 0);
+          
+          if (totalPulled > 0) {
+            console.log('Auto sync: Pulled remote changes', result.pullCounts);
+            this.showSyncNotification(true, undefined, result.pullCounts, 'pull');
+            
+            // Update last sync time
+            this.lastSyncTime = Date.now();
+            this.saveSettings();
+            
+            // Trigger a data refresh in the app
+            this.triggerAppDataRefresh();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Auto sync: Error checking for remote changes -', error);
+    }
+  }
+
+  private async performBidirectionalSync() {
+    try {
+      console.log('Auto sync: Starting bidirectional sync...');
       
       const result = await externalDatabaseService.syncAllData();
       
       if (result.success) {
-        this.lastBackupTime = Date.now();
+        this.lastSyncTime = Date.now();
         this.saveSettings();
         
-        console.log('Auto backup: Success!', result.message);
+        console.log('Auto sync: Success!', result.message);
         
-        // Show subtle notification without interrupting user
-        this.showBackupNotification(true, result.syncedCounts);
+        // Show notification with both push and pull counts
+        this.showSyncNotification(true, result.syncedCounts, result.pullCounts);
+        
+        // Trigger a data refresh in the app if we pulled any data
+        if (result.pullCounts && Object.values(result.pullCounts).some(count => count > 0)) {
+          this.triggerAppDataRefresh();
+        }
       } else {
-        console.error('Auto backup: Failed -', result.message);
-        this.showBackupNotification(false);
+        console.error('Auto sync: Failed -', result.message);
+        this.showSyncNotification(false);
       }
     } catch (error) {
-      console.error('Auto backup: Error -', error);
-      this.showBackupNotification(false);
+      console.error('Auto sync: Error -', error);
+      this.showSyncNotification(false);
     }
   }
 
-  private showBackupNotification(success: boolean, counts?: any) {
+  private triggerAppDataRefresh() {
+    // Trigger a custom event that the app can listen to for data refresh
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('autoSyncDataUpdate'));
+    }
+  }
+
+  private showSyncNotification(success: boolean, syncedCounts?: any, pullCounts?: any, type: 'sync' | 'pull' = 'sync') {
     // Only show notification if user is not actively interacting
-    if (document.hidden) return;
+    if (typeof window === 'undefined' || document.hidden) return;
 
     const notificationDiv = document.createElement('div');
     notificationDiv.className = `fixed top-4 right-4 z-50 p-3 rounded-lg shadow-lg max-w-sm transition-all duration-300 ${
@@ -154,16 +233,45 @@ export class AutoBackupService {
         : 'bg-error text-error-content'
     }`;
     
+    let message = '';
+    let details = '';
+    
+    if (success) {
+      if (type === 'pull') {
+        message = 'Data Synced from Other Devices';
+        if (pullCounts) {
+          const totalPulled = Object.values(pullCounts).reduce((sum: number, count: any) => sum + count, 0);
+          details = `Pulled ${totalPulled} items`;
+        }
+      } else {
+        message = 'Auto Sync Complete';
+        if (syncedCounts || pullCounts) {
+          const totalSynced = syncedCounts ? Object.values(syncedCounts).reduce((sum: number, count: any) => sum + count, 0) : 0;
+          const totalPulled = pullCounts ? Object.values(pullCounts).reduce((sum: number, count: any) => sum + count, 0) : 0;
+          
+          if (totalSynced > 0 && totalPulled > 0) {
+            details = `Synced ${totalSynced} up, ${totalPulled} down`;
+          } else if (totalSynced > 0) {
+            details = `Synced ${totalSynced} items`;
+          } else if (totalPulled > 0) {
+            details = `Pulled ${totalPulled} items`;
+          }
+        }
+      }
+    } else {
+      message = 'Auto Sync Failed';
+    }
+    
     notificationDiv.innerHTML = `
       <div class="flex items-center gap-2">
-        <span class="text-lg">${success ? '✅' : '❌'}</span>
+        <span class="text-lg">${success ? '🔄' : '❌'}</span>
         <div>
           <div class="font-medium text-sm">
-            ${success ? 'Auto Backup Complete' : 'Auto Backup Failed'}
+            ${message}
           </div>
-          ${success && counts ? `
+          ${details ? `
             <div class="text-xs opacity-90">
-              Synced: ${counts.foodEntries + counts.workoutEntries + counts.biomarkerEntries + counts.goals} items
+              ${details}
             </div>
           ` : ''}
         </div>
@@ -178,18 +286,20 @@ export class AutoBackupService {
       notificationDiv.style.transform = 'translateX(0)';
     }, 100);
 
-    // Remove after 3 seconds
+    // Remove after 4 seconds (slightly longer for sync notifications)
     setTimeout(() => {
       notificationDiv.style.opacity = '0';
       notificationDiv.style.transform = 'translateX(100%)';
       setTimeout(() => {
-        document.body.removeChild(notificationDiv);
+        if (document.body.contains(notificationDiv)) {
+          document.body.removeChild(notificationDiv);
+        }
       }, 300);
-    }, 3000);
+    }, 4000);
   }
 
-  // Manual backup with user feedback
-  async performManualBackup(): Promise<{ success: boolean; message: string; counts?: any }> {
+  // Manual sync with user feedback
+  async performManualSync(): Promise<{ success: boolean; message: string; syncedCounts?: any; pullCounts?: any }> {
     if (!externalDatabaseService.isConnectedToDatabase()) {
       return {
         success: false,
@@ -201,33 +311,53 @@ export class AutoBackupService {
       const result = await externalDatabaseService.syncAllData();
       
       if (result.success) {
-        this.lastBackupTime = Date.now();
+        this.lastSyncTime = Date.now();
         this.saveSettings();
+        
+        // Trigger a data refresh if we pulled any data
+        if (result.pullCounts && Object.values(result.pullCounts).some(count => count > 0)) {
+          this.triggerAppDataRefresh();
+        }
       }
       
       return result;
     } catch (error) {
-      console.error('Manual backup failed:', error);
+      console.error('Manual sync failed:', error);
       return {
         success: false,
-        message: 'Backup failed due to an unexpected error'
+        message: 'Sync failed due to an unexpected error'
       };
     }
   }
 
-  getTimeUntilNextBackup(): number {
+  // Keep this method for backward compatibility
+  async performManualBackup(): Promise<{ success: boolean; message: string; counts?: any }> {
+    const result = await this.performManualSync();
+    return {
+      success: result.success,
+      message: result.message,
+      counts: result.syncedCounts
+    };
+  }
+
+  getTimeUntilNextSync(): number {
     if (!this.isEnabled) return 0;
     
-    const nextBackupTime = this.lastBackupTime + this.BACKUP_INTERVAL_MS;
-    const timeUntilNext = nextBackupTime - Date.now();
+    const nextSyncTime = this.lastSyncTime + this.SYNC_INTERVAL_MS;
+    const timeUntilNext = nextSyncTime - Date.now();
     
     return Math.max(0, timeUntilNext);
   }
 
-  getFormattedTimeUntilNextBackup(): string {
-    const ms = this.getTimeUntilNextBackup();
+  // Keep this method for backward compatibility
+  getTimeUntilNextBackup(): number {
+    return this.getTimeUntilNextSync();
+  }
+
+  getFormattedTimeUntilNextSync(): string {
+    const ms = this.getTimeUntilNextSync();
     
-    if (ms === 0) return 'Ready to backup';
+    if (ms === 0) return 'Ready to sync';
     
     const hours = Math.floor(ms / (60 * 60 * 1000));
     const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
@@ -238,6 +368,14 @@ export class AutoBackupService {
       return `${minutes}m`;
     }
   }
+
+  // Keep this method for backward compatibility
+  getFormattedTimeUntilNextBackup(): string {
+    return this.getFormattedTimeUntilNextSync();
+  }
 }
 
-export const autoBackupService = AutoBackupService.getInstance(); 
+export const autoSyncService = AutoSyncService.getInstance();
+
+// Export with old name for backward compatibility
+export const autoBackupService = autoSyncService; 

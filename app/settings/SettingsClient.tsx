@@ -36,7 +36,7 @@ import { UserProfile, Goal, BiomarkerEntry, BiomarkerType } from '../types';
 import AppLayout from '../components/layout/AppLayout';
 import { useToast } from '../components/ui/ToastNotification';
 import { notificationService } from '../services/notificationService';
-import { autoBackupService } from '../services/autoBackup';
+import { autoSyncService } from '../services/autoBackup';
 import DatabaseConnection from '../components/DatabaseConnection';
 import DatabaseViewer from '../components/DatabaseViewer';
 
@@ -102,9 +102,9 @@ export default function SettingsClient() {
   // API Keys state
   const [geminiApiKey, setGeminiApiKey] = useState('');
 
-  // Auto Backup state
-  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
-  const [lastBackupTime, setLastBackupTime] = useState(0);
+  // Auto Sync state
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(0);
 
   useEffect(() => {
     loadAllData();
@@ -173,9 +173,9 @@ export default function SettingsClient() {
       setGoals(goalsData);
       setBiomarkers(biomarkersData);
       
-      // Load auto backup settings
-      setAutoBackupEnabled(autoBackupService.isAutoBackupEnabled());
-      setLastBackupTime(autoBackupService.getLastBackupTime());
+      // Load auto sync settings
+      setAutoSyncEnabled(autoSyncService.isAutoSyncEnabled());
+      setLastSyncTime(autoSyncService.getLastSyncTime());
     } catch (error) {
       console.error('Failed to load data:', error);
       showError('Failed to load settings', 'Please try refreshing the page');
@@ -800,82 +800,102 @@ export default function SettingsClient() {
             {/* Database Viewer */}
             <DatabaseViewer />
 
-            {/* Auto Backup */}
+            {/* Auto Sync */}
             <div className="health-card">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <RefreshCw className="w-5 h-5 text-primary" />
-                Auto Backup
+                Auto Sync
               </h3>
               
               <div className="space-y-4">
                 {/* Enable/Disable Toggle */}
                 <div className="flex items-center justify-between p-3 bg-base-200/50 rounded-lg">
                   <div>
-                    <p className="font-medium">Automatic Backup</p>
+                    <p className="font-medium">Automatic Sync</p>
                     <p className="text-sm text-base-content/60">
-                      Automatically sync your data to your external database daily
+                      Automatically sync your data across all devices daily and in real-time
                     </p>
                   </div>
                   <input 
                     type="checkbox" 
                     className="toggle toggle-primary" 
-                    checked={autoBackupEnabled}
+                    checked={autoSyncEnabled}
                     onChange={(e) => {
                       const enabled = e.target.checked;
-                      setAutoBackupEnabled(enabled);
+                      setAutoSyncEnabled(enabled);
                       if (enabled) {
-                        autoBackupService.enable();
-                        showSuccess('Auto backup enabled', 'Your data will sync automatically every 24 hours');
+                        autoSyncService.enable();
+                        showSuccess('Auto sync enabled', 'Your data will sync automatically across all devices');
                       } else {
-                        autoBackupService.disable();
-                        showSuccess('Auto backup disabled', 'You can still manually sync your data');
+                        autoSyncService.disable();
+                        showSuccess('Auto sync disabled', 'You can still manually sync your data');
                       }
                     }}
                   />
                 </div>
 
                 {/* Status Information */}
-                {autoBackupEnabled && (
+                {autoSyncEnabled && (
                   <div className="p-3 bg-success/10 rounded-lg border border-success/20">
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle className="w-4 h-4 text-success" />
-                      <span className="text-sm font-medium text-success">Auto Backup Active</span>
+                      <span className="text-sm font-medium text-success">Auto Sync Active</span>
                     </div>
                     <div className="text-xs text-base-content/70 space-y-1">
-                      {lastBackupTime > 0 ? (
-                        <p>Last backup: {new Date(lastBackupTime).toLocaleString()}</p>
+                      {lastSyncTime > 0 ? (
+                        <p>Last sync: {new Date(lastSyncTime).toLocaleString()}</p>
                       ) : (
-                        <p>No backup performed yet</p>
+                        <p>No sync performed yet</p>
                       )}
-                      <p>Next backup: {autoBackupService.getFormattedTimeUntilNextBackup()}</p>
+                      <p>Next full sync: {autoSyncService.getFormattedTimeUntilNextSync()}</p>
+                      <p className="text-info">🔄 Real-time sync: Checks for changes every 15 minutes</p>
                     </div>
                   </div>
                 )}
 
-                {!autoBackupEnabled && (
+                {!autoSyncEnabled && (
                   <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-warning" />
-                      <span className="text-sm font-medium text-warning">Auto Backup Disabled</span>
+                      <span className="text-sm font-medium text-warning">Auto Sync Disabled</span>
                     </div>
                     <p className="text-xs text-base-content/70">
-                      Enable auto backup to keep your data safe and synced across devices
+                      Enable auto sync to keep your data synchronized across all devices in real-time
                     </p>
                   </div>
                 )}
 
-                {/* Manual Backup Button */}
+                {/* Manual Sync Button */}
                 <div className="flex gap-3">
                   <button
                     onClick={async () => {
                       setIsSaving(true);
                       try {
-                        const result = await autoBackupService.performManualBackup();
+                        const result = await autoSyncService.performManualSync();
                         if (result.success) {
-                          setLastBackupTime(Date.now());
-                          showSuccess('Manual backup complete!', result.message);
+                          setLastSyncTime(Date.now());
+                          
+                          let message = 'Manual sync complete!';
+                          if (result.syncedCounts || result.pullCounts) {
+                            const syncedCount = result.syncedCounts ? 
+                              (Object.values(result.syncedCounts) as number[]).reduce((sum, count) => sum + count, 0) : 0;
+                            const pulledCount = result.pullCounts ? 
+                              (Object.values(result.pullCounts) as number[]).reduce((sum, count) => sum + count, 0) : 0;
+                            
+                            if (syncedCount > 0 && pulledCount > 0) {
+                              message += `\n\nSynced ${syncedCount} items to cloud, ${pulledCount} items from other devices`;
+                            } else if (syncedCount > 0) {
+                              message += `\n\nSynced ${syncedCount} items to cloud`;
+                            } else if (pulledCount > 0) {
+                              message += `\n\nPulled ${pulledCount} items from other devices`;
+                            } else {
+                              message += '\n\nEverything is already up to date!';
+                            }
+                          }
+                          
+                          showSuccess('Sync complete!', message);
                         } else {
-                          showError('Backup failed', result.message);
+                          showError('Sync failed', result.message);
                         }
                       } finally {
                         setIsSaving(false);
@@ -887,12 +907,12 @@ export default function SettingsClient() {
                     {isSaving ? (
                       <>
                         <span className="loading loading-spinner loading-sm"></span>
-                        Backing up...
+                        Syncing...
                       </>
                     ) : (
                       <>
                         <RefreshCw className="w-4 h-4" />
-                        Manual Backup
+                        Manual Sync
                       </>
                     )}
                   </button>
@@ -900,9 +920,18 @@ export default function SettingsClient() {
 
                 {/* Help Text */}
                 <div className="text-xs text-base-content/60 bg-info/10 p-3 rounded-lg">
-                  💡 Auto backup requires an active database connection. When enabled, your health data 
-                  will be automatically synced to your external database every 24 hours and whenever 
-                  you add new entries.
+                  <div className="flex items-start gap-2">
+                    <span className="text-info">💡</span>
+                    <div>
+                      <p className="font-medium mb-1">How Auto Sync Works:</p>
+                      <ul className="space-y-1 text-xs">
+                        <li>• <strong>Real-time:</strong> Checks for remote changes every 15 minutes</li>
+                        <li>• <strong>Instant:</strong> Syncs your changes immediately when you add data</li>
+                        <li>• <strong>Daily:</strong> Full bidirectional sync every 24 hours</li>
+                        <li>• <strong>Smart:</strong> Only syncs what's changed to save bandwidth</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

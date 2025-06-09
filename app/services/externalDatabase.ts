@@ -1,13 +1,34 @@
 import { FoodEntry, WorkoutEntry, BiomarkerEntry, Goal, UserProfile } from '../types';
+import { databaseService } from './database';
 
 interface DatabaseConfig {
   connectionString: string;
   type: 'postgresql' | 'mysql' | 'sqlite';
 }
 
+interface SyncResult {
+  success: boolean;
+  message: string;
+  syncedCounts: {
+    foodEntries: number;
+    workoutEntries: number;
+    biomarkerEntries: number;
+    goals: number;
+    userProfile: number;
+  };
+  pullCounts?: {
+    foodEntries: number;
+    workoutEntries: number;
+    biomarkerEntries: number;
+    goals: number;
+    userProfile: number;
+  };
+}
+
 class ExternalDatabaseService {
   private config: DatabaseConfig | null = null;
   private isConnected = false;
+  private lastSyncTimestamp = 0;
 
   async connect(connectionString: string): Promise<boolean> {
     try {
@@ -26,6 +47,9 @@ class ExternalDatabaseService {
         // Initialize database schema if needed
         await this.initializeSchema();
         
+        // Load last sync timestamp
+        this.lastSyncTimestamp = parseInt(localStorage.getItem('lastSyncTimestamp') || '0');
+        
         return true;
       }
       return false;
@@ -40,6 +64,7 @@ class ExternalDatabaseService {
     this.config = null;
     this.isConnected = false;
     localStorage.removeItem('dbConnectionString');
+    localStorage.removeItem('lastSyncTimestamp');
   }
 
   private detectDatabaseType(connectionString: string): 'postgresql' | 'mysql' | 'sqlite' {
@@ -83,17 +108,24 @@ class ExternalDatabaseService {
     console.log('Initializing schema for:', this.config.type);
   }
 
-  async syncAllData(): Promise<{ success: boolean; message: string; syncedCounts: any }> {
+  /**
+   * Bidirectional sync: Push local changes and pull remote changes
+   */
+  async syncAllData(): Promise<SyncResult> {
     if (!this.isConnected || !this.config) {
-      return { success: false, message: 'Database not connected', syncedCounts: {} };
+      return { 
+        success: false, 
+        message: 'Database not connected', 
+        syncedCounts: { foodEntries: 0, workoutEntries: 0, biomarkerEntries: 0, goals: 0, userProfile: 0 }
+      };
     }
 
     try {
-      // Get all local data
-      const localData = await this.getAllLocalData();
+      // Get all local data with timestamps
+      const localData = await this.getAllLocalDataWithTimestamps();
       
-      // Sync to external database via API
-      const response = await fetch('/api/database/sync', {
+      // Perform bidirectional sync via API
+      const response = await fetch('/api/database/bidirectional-sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,29 +133,198 @@ class ExternalDatabaseService {
         body: JSON.stringify({
           connectionString: this.config.connectionString,
           type: this.config.type,
-          data: localData
+          localData,
+          lastSyncTimestamp: this.lastSyncTimestamp
         }),
       });
 
       const result = await response.json();
       
       if (response.ok && result.success) {
+        // Apply pulled data to local storage
+        if (result.pulledData) {
+          await this.applyPulledData(result.pulledData);
+        }
+
+        // Update last sync timestamp
+        this.lastSyncTimestamp = Date.now();
+        localStorage.setItem('lastSyncTimestamp', this.lastSyncTimestamp.toString());
+
         return {
           success: true,
           message: result.message,
-          syncedCounts: result.syncedCounts
+          syncedCounts: result.syncedCounts,
+          pullCounts: result.pullCounts
         };
       } else {
         return {
           success: false,
           message: result.error || 'Sync failed',
-          syncedCounts: {}
+          syncedCounts: { foodEntries: 0, workoutEntries: 0, biomarkerEntries: 0, goals: 0, userProfile: 0 }
         };
       }
     } catch (error) {
-      console.error('Data sync failed:', error);
-      return { success: false, message: 'Sync failed. Please try again.', syncedCounts: {} };
+      console.error('Bidirectional sync failed:', error);
+      return { 
+        success: false, 
+        message: 'Sync failed. Please try again.', 
+        syncedCounts: { foodEntries: 0, workoutEntries: 0, biomarkerEntries: 0, goals: 0, userProfile: 0 }
+      };
     }
+  }
+
+  /**
+   * Pull data from remote database and merge with local data
+   */
+  async pullRemoteData(): Promise<SyncResult> {
+    if (!this.isConnected || !this.config) {
+      return { 
+        success: false, 
+        message: 'Database not connected', 
+        syncedCounts: { foodEntries: 0, workoutEntries: 0, biomarkerEntries: 0, goals: 0, userProfile: 0 }
+      };
+    }
+
+    try {
+      const response = await fetch('/api/database/pull', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          connectionString: this.config.connectionString,
+          type: this.config.type,
+          lastSyncTimestamp: this.lastSyncTimestamp
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        // Apply pulled data to local storage
+        if (result.pulledData) {
+          await this.applyPulledData(result.pulledData);
+        }
+
+        // Update last sync timestamp
+        this.lastSyncTimestamp = Date.now();
+        localStorage.setItem('lastSyncTimestamp', this.lastSyncTimestamp.toString());
+
+        return {
+          success: true,
+          message: result.message,
+          syncedCounts: { foodEntries: 0, workoutEntries: 0, biomarkerEntries: 0, goals: 0, userProfile: 0 },
+          pullCounts: result.pullCounts
+        };
+      } else {
+        return {
+          success: false,
+          message: result.error || 'Pull failed',
+          syncedCounts: { foodEntries: 0, workoutEntries: 0, biomarkerEntries: 0, goals: 0, userProfile: 0 }
+        };
+      }
+    } catch (error) {
+      console.error('Data pull failed:', error);
+      return { 
+        success: false, 
+        message: 'Pull failed. Please try again.', 
+        syncedCounts: { foodEntries: 0, workoutEntries: 0, biomarkerEntries: 0, goals: 0, userProfile: 0 }
+      };
+    }
+  }
+
+  /**
+   * Apply pulled data to local storage, merging intelligently
+   */
+  private async applyPulledData(pulledData: any) {
+    try {
+      // Merge food entries
+      if (pulledData.foodEntries && pulledData.foodEntries.length > 0) {
+        const localFoodEntries = await databaseService.getFoodEntries();
+        const mergedFoodEntries = this.mergeDataArrays(localFoodEntries, pulledData.foodEntries);
+        localStorage.setItem('foodEntries', JSON.stringify(mergedFoodEntries));
+      }
+
+      // Merge workout entries
+      if (pulledData.workoutEntries && pulledData.workoutEntries.length > 0) {
+        const localWorkoutEntries = await databaseService.getWorkoutEntries();
+        const mergedWorkoutEntries = this.mergeDataArrays(localWorkoutEntries, pulledData.workoutEntries);
+        localStorage.setItem('workoutEntries', JSON.stringify(mergedWorkoutEntries));
+      }
+
+      // Merge biomarker entries
+      if (pulledData.biomarkerEntries && pulledData.biomarkerEntries.length > 0) {
+        const localBiomarkerEntries = await databaseService.getBiomarkerEntries();
+        const mergedBiomarkerEntries = this.mergeDataArrays(localBiomarkerEntries, pulledData.biomarkerEntries);
+        localStorage.setItem('biomarkerEntries', JSON.stringify(mergedBiomarkerEntries));
+      }
+
+      // Merge goals
+      if (pulledData.goals && pulledData.goals.length > 0) {
+        const localGoals = await databaseService.getGoals();
+        const mergedGoals = this.mergeDataArrays(localGoals, pulledData.goals);
+        localStorage.setItem('goals', JSON.stringify(mergedGoals));
+      }
+
+      // Update user profile (take the most recent one)
+      if (pulledData.userProfile) {
+        const localProfile = await databaseService.getUserProfile();
+        if (!localProfile || pulledData.userProfile.updatedAt > (localProfile.updatedAt || 0)) {
+          await databaseService.saveUserProfile(pulledData.userProfile);
+        }
+      }
+
+      console.log('Pulled data applied successfully');
+    } catch (error) {
+      console.error('Failed to apply pulled data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Merge two arrays of data, avoiding duplicates and keeping the most recent version
+   */
+  private mergeDataArrays(localArray: any[], remoteArray: any[]): any[] {
+    const merged = [...localArray];
+    const localIds = new Set(localArray.map(item => item.id));
+
+    for (const remoteItem of remoteArray) {
+      const localIndex = merged.findIndex(item => item.id === remoteItem.id);
+      
+      if (localIndex === -1) {
+        // Item doesn't exist locally, add it
+        merged.push(remoteItem);
+      } else {
+        // Item exists, keep the most recent version
+        const localItem = merged[localIndex];
+        const remoteTimestamp = remoteItem.updatedAt || remoteItem.timestamp || 0;
+        const localTimestamp = localItem.updatedAt || localItem.timestamp || 0;
+        
+        if (remoteTimestamp > localTimestamp) {
+          merged[localIndex] = remoteItem;
+        }
+      }
+    }
+
+    return merged;
+  }
+
+  private async getAllLocalDataWithTimestamps() {
+    // Get data from localStorage with timestamps for sync
+    const foodEntries = JSON.parse(localStorage.getItem('foodEntries') || '[]');
+    const workoutEntries = JSON.parse(localStorage.getItem('workoutEntries') || '[]');
+    const biomarkerEntries = JSON.parse(localStorage.getItem('biomarkerEntries') || '[]');
+    const goals = JSON.parse(localStorage.getItem('goals') || '[]');
+    const userProfile = JSON.parse(localStorage.getItem('userProfile') || 'null');
+
+    return {
+      userProfile,
+      foodEntries,
+      workoutEntries,
+      biomarkerEntries,
+      goals,
+      syncTimestamp: Date.now()
+    };
   }
 
   private async getAllLocalData() {
@@ -165,6 +366,40 @@ class ExternalDatabaseService {
       type: this.config.type,
       masked
     };
+  }
+
+  getLastSyncTimestamp(): number {
+    return this.lastSyncTimestamp;
+  }
+
+  /**
+   * Check if there are any changes since last sync
+   */
+  async hasLocalChanges(): Promise<boolean> {
+    try {
+      const localData = await this.getAllLocalDataWithTimestamps();
+      
+      // Check if any item has been modified since last sync
+      const allItems = [
+        ...localData.foodEntries,
+        ...localData.workoutEntries,
+        ...localData.biomarkerEntries,
+        ...localData.goals
+      ];
+
+      if (localData.userProfile && 
+          (localData.userProfile.updatedAt || localData.userProfile.createdAt || 0) > this.lastSyncTimestamp) {
+        return true;
+      }
+
+      return allItems.some(item => {
+        const itemTimestamp = item.updatedAt || item.timestamp || item.createdAt || 0;
+        return itemTimestamp > this.lastSyncTimestamp;
+      });
+    } catch (error) {
+      console.error('Error checking for local changes:', error);
+      return false;
+    }
   }
 }
 

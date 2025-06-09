@@ -114,6 +114,7 @@ export interface UserProfile {
   activityLevel: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extra_active';
   preferences: UserPreferences;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export interface UserPreferences {

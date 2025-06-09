@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { databaseService } from '../services/database';
-import { autoBackupService } from '../services/autoBackup';
+import { autoSyncService } from '../services/autoBackup';
 import { FoodEntry, WorkoutEntry, BiomarkerEntry, DailyStats } from '../types';
 
 interface WaterEntry {
@@ -221,16 +221,25 @@ const HealthContext = createContext<{
 export function HealthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(healthReducer, initialState);
 
-  // Load data when date changes
   useEffect(() => {
     loadDataForDate(state.selectedDate);
+    
+    // Listen for auto-sync data updates
+    const handleAutoSyncUpdate = () => {
+      console.log('Auto-sync data update detected, refreshing local data...');
+      loadDataForDate(state.selectedDate);
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('autoSyncDataUpdate', handleAutoSyncUpdate);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('autoSyncDataUpdate', handleAutoSyncUpdate);
+      }
+    };
   }, [state.selectedDate]);
-
-  // Update calculations when entries change
-  useEffect(() => {
-    dispatch({ type: 'UPDATE_DAILY_PROGRESS' });
-    dispatch({ type: 'CALCULATE_HEALTH_SCORE' });
-  }, [state.foodEntries, state.workoutEntries, state.waterEntries, state.nutritionGoals]);
 
   const loadDataForDate = async (date: string) => {
     try {
@@ -271,8 +280,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       try {
         await databaseService.addFoodEntry(entry);
         dispatch({ type: 'ADD_FOOD_ENTRY', payload: entry });
-        // Trigger auto backup after data change
-        autoBackupService.triggerBackupOnDataChange();
+        // Trigger auto sync after data change
+        autoSyncService.triggerSyncOnDataChange();
       } catch (error) {
         console.error('Failed to add food entry:', error);
         throw error;
@@ -283,6 +292,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       try {
         await databaseService.deleteFoodEntry(id);
         dispatch({ type: 'REMOVE_FOOD_ENTRY', payload: id });
+        // Trigger auto sync after data change
+        autoSyncService.triggerSyncOnDataChange();
       } catch (error) {
         console.error('Failed to remove food entry:', error);
         throw error;
@@ -293,8 +304,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       try {
         await databaseService.addWorkoutEntry(entry);
         dispatch({ type: 'ADD_WORKOUT_ENTRY', payload: entry });
-        // Trigger auto backup after data change
-        autoBackupService.triggerBackupOnDataChange();
+        // Trigger auto sync after data change
+        autoSyncService.triggerSyncOnDataChange();
       } catch (error) {
         console.error('Failed to add workout entry:', error);
         throw error;
@@ -320,8 +331,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
         
         await databaseService.addBiomarkerEntry(biomarkerEntry);
         dispatch({ type: 'ADD_WATER_ENTRY', payload: waterEntry });
-        // Trigger auto backup after data change
-        autoBackupService.triggerBackupOnDataChange();
+        // Trigger auto sync after data change
+        autoSyncService.triggerSyncOnDataChange();
       } catch (error) {
         console.error('Failed to add water entry:', error);
         throw error;
@@ -342,6 +353,11 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       // TODO: Implement user profile update
     },
   };
+
+  // Calculate and update daily progress whenever entries change
+  useEffect(() => {
+    dispatch({ type: 'UPDATE_DAILY_PROGRESS' });
+  }, [state.foodEntries, state.workoutEntries, state.waterEntries]);
 
   return (
     <HealthContext.Provider value={{ state, dispatch, actions }}>
