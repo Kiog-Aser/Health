@@ -35,15 +35,6 @@ const FREE_DB_PROVIDERS = [
     icon: '🚀',
     color: 'from-purple-500 to-violet-600',
     setup: 'Create account → New database → Get URL'
-  },
-  {
-    name: 'PlanetScale',
-    description: 'MySQL-compatible serverless',
-    url: 'https://planetscale.com',
-    freeTier: '1 database, 5GB storage',
-    icon: '🌍',
-    color: 'from-orange-500 to-red-600',
-    setup: 'Sign up → Create database → Connect tab'
   }
 ];
 
@@ -104,14 +95,14 @@ export default function DatabaseConnection({ className = "" }: DatabaseConnectio
         {isConnected && (
           <div className="flex items-center gap-2 text-success text-sm bg-success/10 px-3 py-1 rounded-full">
             <Check className="w-4 h-4" />
-            Connected
+            Connected & Auto-Syncing
           </div>
         )}
       </div>
 
       {!isConnected ? (
         <div className="space-y-6">
-          {/* Free Database Providers */}
+          {/* Free Database Providers - Only show when not connected */}
           <div>
             <h4 className="text-sm font-medium text-base-content/80 mb-4">
               🎁 Recommended Free Database Providers
@@ -220,7 +211,7 @@ export default function DatabaseConnection({ className = "" }: DatabaseConnectio
               <li>Create an account and database</li>
               <li>Copy the connection string</li>
               <li>Paste it above and click "Connect Database"</li>
-              <li>Your data will sync to your personal database!</li>
+              <li>Your data will automatically sync across all devices!</li>
             </ol>
           </div>
         </div>
@@ -230,11 +221,22 @@ export default function DatabaseConnection({ className = "" }: DatabaseConnectio
           <div className="text-center py-6">
             <div className="text-4xl mb-3">✅</div>
             <h4 className="text-lg font-semibold text-success mb-2">
-              Database Connected!
+              Database Connected & Auto-Syncing!
             </h4>
             <p className="text-sm text-base-content/60">
-              Your health data is now syncing to your personal database.
+              Your health data automatically syncs across all devices in real-time.
             </p>
+          </div>
+
+          {/* Sync Status */}
+          <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+            <h5 className="text-sm font-medium text-success mb-2">🔄 Auto-Sync Features</h5>
+            <ul className="text-xs text-base-content/70 space-y-1">
+              <li>• <strong>Real-time:</strong> Changes sync instantly when you add data</li>
+              <li>• <strong>Cross-device:</strong> Data appears on all your devices within 15 minutes</li>
+              <li>• <strong>Smart merging:</strong> Prevents conflicts when using multiple devices</li>
+              <li>• <strong>Always secure:</strong> Your data stays private in your own database</li>
+            </ul>
           </div>
 
           {/* Connection Details */}
@@ -267,8 +269,30 @@ export default function DatabaseConnection({ className = "" }: DatabaseConnectio
                 try {
                   const syncResult = await externalDatabaseService.syncAllData();
                   if (syncResult.success) {
-                    const counts = syncResult.syncedCounts;
-                    alert(`✅ ${syncResult.message}\n\nSynced:\n• ${counts.foodEntries} food entries\n• ${counts.workoutEntries} workouts\n• ${counts.biomarkerEntries} measurements\n• ${counts.goals} goals\n• ${counts.userProfile} profile`);
+                    const syncedCounts = syncResult.syncedCounts;
+                    const pullCounts = syncResult.pullCounts;
+                    
+                    let message = `✅ ${syncResult.message}\n\n`;
+                    
+                    if (syncedCounts) {
+                      const totalSynced = Object.values(syncedCounts).reduce((sum: number, count: number) => sum + count, 0);
+                      if (totalSynced > 0) {
+                        message += `Uploaded ${totalSynced} items to cloud\n`;
+                      }
+                    }
+                    
+                    if (pullCounts) {
+                      const totalPulled = Object.values(pullCounts).reduce((sum: number, count: number) => sum + count, 0);
+                      if (totalPulled > 0) {
+                        message += `Downloaded ${totalPulled} items from other devices\n`;
+                      }
+                    }
+                    
+                    if (!syncedCounts && !pullCounts) {
+                      message += 'Everything is already up to date!';
+                    }
+                    
+                    alert(message);
                   } else {
                     alert(`❌ ${syncResult.message}`);
                   }
@@ -287,21 +311,10 @@ export default function DatabaseConnection({ className = "" }: DatabaseConnectio
               ) : (
                 <>
                   <Database className="w-4 h-4" />
-                  Sync Data
+                  Manual Sync
                 </>
               )}
             </button>
-          </div>
-
-          {/* Benefits */}
-          <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-            <h5 className="text-sm font-medium text-success mb-2">🎉 Benefits of Your Database</h5>
-            <ul className="text-xs text-base-content/70 space-y-1">
-              <li>• Your data is private and owned by you</li>
-              <li>• Works offline and syncs when online</li>
-              <li>• Export your data anytime</li>
-              <li>• No vendor lock-in</li>
-            </ul>
           </div>
         </div>
       )}

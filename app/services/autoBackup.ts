@@ -2,8 +2,9 @@ import { externalDatabaseService } from './externalDatabase';
 
 export class AutoSyncService {
   private static instance: AutoSyncService;
-  private isEnabled = false;
+  private isEnabled = true; // Always enabled by default
   private syncInterval: NodeJS.Timeout | null = null;
+  private pullInterval: NodeJS.Timeout | null = null;
   private lastSyncTime = 0;
   private readonly SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
   private readonly MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes minimum between syncs
@@ -18,51 +19,56 @@ export class AutoSyncService {
 
   private constructor() {
     this.loadSettings();
-    this.startAutoSync();
-    this.startPullChecks();
+    this.initializeAutoSync();
   }
 
   private loadSettings() {
     if (typeof window === 'undefined') return;
     
-    const settings = localStorage.getItem('autoSyncSettings');
-    if (settings) {
-      const { enabled, lastSyncTime } = JSON.parse(settings);
-      this.isEnabled = enabled;
-      this.lastSyncTime = lastSyncTime || 0;
-    } else {
-      // Default to enabled if user has database connection
-      this.isEnabled = externalDatabaseService.isConnectedToDatabase();
+    // Only load last sync time, always enable auto sync
+    const lastSyncTime = localStorage.getItem('lastSyncTime');
+    if (lastSyncTime) {
+      this.lastSyncTime = parseInt(lastSyncTime) || 0;
     }
+    
+    // Always enabled in PWA
+    this.isEnabled = true;
   }
 
   private saveSettings() {
     if (typeof window === 'undefined') return;
     
-    const settings = {
-      enabled: this.isEnabled,
-      lastSyncTime: this.lastSyncTime
-    };
-    localStorage.setItem('autoSyncSettings', JSON.stringify(settings));
+    // Only save last sync time
+    localStorage.setItem('lastSyncTime', this.lastSyncTime.toString());
   }
 
-  enable() {
-    this.isEnabled = true;
-    this.saveSettings();
-    this.startAutoSync();
-    this.startPullChecks();
-    console.log('Auto sync enabled');
+  private initializeAutoSync() {
+    // Start auto sync immediately if database is connected
+    if (externalDatabaseService.isConnectedToDatabase()) {
+      this.startAutoSync();
+      this.startPullChecks();
+    } else {
+      // Check periodically if database becomes available
+      this.checkForDatabaseConnection();
+    }
   }
 
-  disable() {
-    this.isEnabled = false;
-    this.saveSettings();
-    this.stopAutoSync();
-    console.log('Auto sync disabled');
+  private checkForDatabaseConnection() {
+    if (typeof window === 'undefined') return;
+    
+    const checkInterval = setInterval(() => {
+      if (externalDatabaseService.isConnectedToDatabase()) {
+        console.log('Auto sync: Database connection detected, starting sync services');
+        this.startAutoSync();
+        this.startPullChecks();
+        clearInterval(checkInterval);
+      }
+    }, 10000); // Check every 10 seconds
   }
 
+  // Remove enable/disable methods since it's always enabled
   isAutoSyncEnabled(): boolean {
-    return this.isEnabled;
+    return this.isEnabled && externalDatabaseService.isConnectedToDatabase();
   }
 
   // Keep this method for backward compatibility
@@ -80,12 +86,14 @@ export class AutoSyncService {
   }
 
   private startAutoSync() {
-    if (!this.isEnabled || typeof window === 'undefined') return;
+    if (!externalDatabaseService.isConnectedToDatabase() || typeof window === 'undefined') return;
 
     // Clear any existing interval
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
     }
+
+    console.log('Auto sync: Starting sync service');
 
     // Check every hour for sync opportunity
     this.syncInterval = setInterval(() => {
@@ -97,10 +105,17 @@ export class AutoSyncService {
   }
 
   private startPullChecks() {
-    if (!this.isEnabled || typeof window === 'undefined') return;
+    if (!externalDatabaseService.isConnectedToDatabase() || typeof window === 'undefined') return;
+
+    // Clear any existing interval
+    if (this.pullInterval) {
+      clearInterval(this.pullInterval);
+    }
+
+    console.log('Auto sync: Starting pull check service');
 
     // Periodically check for remote changes and pull them
-    setInterval(() => {
+    this.pullInterval = setInterval(() => {
       this.checkAndPullRemoteChanges();
     }, this.PULL_CHECK_INTERVAL_MS);
   }
@@ -110,10 +125,23 @@ export class AutoSyncService {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
     }
+    if (this.pullInterval) {
+      clearInterval(this.pullInterval);
+      this.pullInterval = null;
+    }
+  }
+
+  // Restart sync services when database connection changes
+  restartSyncServices() {
+    this.stopAutoSync();
+    if (externalDatabaseService.isConnectedToDatabase()) {
+      this.startAutoSync();
+      this.startPullChecks();
+    }
   }
 
   private async checkAndSync() {
-    if (!this.isEnabled || !externalDatabaseService.isConnectedToDatabase()) {
+    if (!externalDatabaseService.isConnectedToDatabase()) {
       return;
     }
 
@@ -128,7 +156,7 @@ export class AutoSyncService {
 
   // This can be called manually when data changes
   async triggerSyncOnDataChange() {
-    if (!this.isEnabled || !externalDatabaseService.isConnectedToDatabase()) {
+    if (!externalDatabaseService.isConnectedToDatabase()) {
       return;
     }
 
@@ -150,7 +178,7 @@ export class AutoSyncService {
    * Check for remote changes and pull them if any exist
    */
   private async checkAndPullRemoteChanges() {
-    if (!this.isEnabled || !externalDatabaseService.isConnectedToDatabase()) {
+    if (!externalDatabaseService.isConnectedToDatabase()) {
       return;
     }
 
@@ -341,7 +369,7 @@ export class AutoSyncService {
   }
 
   getTimeUntilNextSync(): number {
-    if (!this.isEnabled) return 0;
+    if (!externalDatabaseService.isConnectedToDatabase()) return 0;
     
     const nextSyncTime = this.lastSyncTime + this.SYNC_INTERVAL_MS;
     const timeUntilNext = nextSyncTime - Date.now();

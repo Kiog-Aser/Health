@@ -102,8 +102,7 @@ export default function SettingsClient() {
   // API Keys state
   const [geminiApiKey, setGeminiApiKey] = useState('');
 
-  // Auto Sync state
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
+  // Auto Sync state (read-only now)
   const [lastSyncTime, setLastSyncTime] = useState(0);
 
   useEffect(() => {
@@ -174,7 +173,6 @@ export default function SettingsClient() {
       setBiomarkers(biomarkersData);
       
       // Load auto sync settings
-      setAutoSyncEnabled(autoSyncService.isAutoSyncEnabled());
       setLastSyncTime(autoSyncService.getLastSyncTime());
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -804,66 +802,26 @@ export default function SettingsClient() {
             <div className="health-card">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <RefreshCw className="w-5 h-5 text-primary" />
-                Auto Sync
+                Auto Sync Status
               </h3>
               
               <div className="space-y-4">
-                {/* Enable/Disable Toggle */}
-                <div className="flex items-center justify-between p-3 bg-base-200/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Automatic Sync</p>
-                    <p className="text-sm text-base-content/60">
-                      Automatically sync your data across all devices daily and in real-time
-                    </p>
+                {/* Always Enabled Status */}
+                <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-4 h-4 text-success" />
+                    <span className="text-sm font-medium text-success">Auto Sync Always Active</span>
                   </div>
-                  <input 
-                    type="checkbox" 
-                    className="toggle toggle-primary" 
-                    checked={autoSyncEnabled}
-                    onChange={(e) => {
-                      const enabled = e.target.checked;
-                      setAutoSyncEnabled(enabled);
-                      if (enabled) {
-                        autoSyncService.enable();
-                        showSuccess('Auto sync enabled', 'Your data will sync automatically across all devices');
-                      } else {
-                        autoSyncService.disable();
-                        showSuccess('Auto sync disabled', 'You can still manually sync your data');
-                      }
-                    }}
-                  />
+                  <div className="text-xs text-base-content/70 space-y-1">
+                    {lastSyncTime > 0 ? (
+                      <p>Last sync: {new Date(lastSyncTime).toLocaleString()}</p>
+                    ) : (
+                      <p>No sync performed yet (requires database connection)</p>
+                    )}
+                    <p>Next full sync: {autoSyncService.getFormattedTimeUntilNextSync()}</p>
+                    <p className="text-info">🔄 Real-time sync: Checks for changes every 15 minutes</p>
+                  </div>
                 </div>
-
-                {/* Status Information */}
-                {autoSyncEnabled && (
-                  <div className="p-3 bg-success/10 rounded-lg border border-success/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="w-4 h-4 text-success" />
-                      <span className="text-sm font-medium text-success">Auto Sync Active</span>
-                    </div>
-                    <div className="text-xs text-base-content/70 space-y-1">
-                      {lastSyncTime > 0 ? (
-                        <p>Last sync: {new Date(lastSyncTime).toLocaleString()}</p>
-                      ) : (
-                        <p>No sync performed yet</p>
-                      )}
-                      <p>Next full sync: {autoSyncService.getFormattedTimeUntilNextSync()}</p>
-                      <p className="text-info">🔄 Real-time sync: Checks for changes every 15 minutes</p>
-                    </div>
-                  </div>
-                )}
-
-                {!autoSyncEnabled && (
-                  <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle className="w-4 h-4 text-warning" />
-                      <span className="text-sm font-medium text-warning">Auto Sync Disabled</span>
-                    </div>
-                    <p className="text-xs text-base-content/70">
-                      Enable auto sync to keep your data synchronized across all devices in real-time
-                    </p>
-                  </div>
-                )}
 
                 {/* Manual Sync Button */}
                 <div className="flex gap-3">
@@ -929,6 +887,7 @@ export default function SettingsClient() {
                         <li>• <strong>Instant:</strong> Syncs your changes immediately when you add data</li>
                         <li>• <strong>Daily:</strong> Full bidirectional sync every 24 hours</li>
                         <li>• <strong>Smart:</strong> Only syncs what's changed to save bandwidth</li>
+                        <li>• <strong>Always on:</strong> Works automatically when database is connected</li>
                       </ul>
                     </div>
                   </div>

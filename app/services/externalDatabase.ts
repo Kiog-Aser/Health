@@ -29,6 +29,42 @@ class ExternalDatabaseService {
   private config: DatabaseConfig | null = null;
   private isConnected = false;
   private lastSyncTimestamp = 0;
+  private autoConnectionAttempted = false;
+
+  constructor() {
+    // Attempt auto-connection on initialization
+    this.attemptAutoConnection();
+  }
+
+  private async attemptAutoConnection() {
+    if (this.autoConnectionAttempted || typeof window === 'undefined') return;
+    
+    this.autoConnectionAttempted = true;
+    
+    try {
+      const savedConnectionString = localStorage.getItem('dbConnectionString');
+      if (savedConnectionString) {
+        console.log('External Database: Attempting auto-connection...');
+        const connected = await this.connect(savedConnectionString);
+        if (connected) {
+          console.log('External Database: Auto-connection successful!');
+          // Notify auto-sync service that database is now available
+          this.notifyConnectionChange();
+        } else {
+          console.log('External Database: Auto-connection failed, connection string may be invalid');
+        }
+      }
+    } catch (error) {
+      console.error('External Database: Auto-connection error:', error);
+    }
+  }
+
+  private notifyConnectionChange() {
+    // Import here to avoid circular dependency
+    import('./autoBackup').then(({ autoSyncService }) => {
+      autoSyncService.restartSyncServices();
+    });
+  }
 
   async connect(connectionString: string): Promise<boolean> {
     try {
@@ -50,6 +86,9 @@ class ExternalDatabaseService {
         // Load last sync timestamp
         this.lastSyncTimestamp = parseInt(localStorage.getItem('lastSyncTimestamp') || '0');
         
+        // Notify auto-sync service that database is now available
+        this.notifyConnectionChange();
+        
         return true;
       }
       return false;
@@ -65,6 +104,9 @@ class ExternalDatabaseService {
     this.isConnected = false;
     localStorage.removeItem('dbConnectionString');
     localStorage.removeItem('lastSyncTimestamp');
+    
+    // Notify auto-sync service that database is no longer available
+    this.notifyConnectionChange();
   }
 
   private detectDatabaseType(connectionString: string): 'postgresql' | 'mysql' | 'sqlite' {
