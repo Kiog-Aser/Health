@@ -136,7 +136,7 @@ async function ensureTablesExist(client: Client) {
       base_sodium DECIMAL,
       show_manual_nutrition BOOLEAN,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
     )`,
     
     `CREATE TABLE IF NOT EXISTS workout_entries (
@@ -150,7 +150,7 @@ async function ensureTablesExist(client: Client) {
       notes TEXT,
       timestamp BIGINT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
     )`,
     
     `CREATE TABLE IF NOT EXISTS biomarker_entries (
@@ -161,7 +161,7 @@ async function ensureTablesExist(client: Client) {
       timestamp BIGINT NOT NULL,
       notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
     )`,
     
     `CREATE TABLE IF NOT EXISTS goals (
@@ -177,7 +177,7 @@ async function ensureTablesExist(client: Client) {
       is_completed BOOLEAN DEFAULT FALSE,
       milestones JSONB,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
     )`,
     
     `CREATE TABLE IF NOT EXISTS user_profiles (
@@ -191,7 +191,7 @@ async function ensureTablesExist(client: Client) {
       created_at_timestamp BIGINT NOT NULL,
       updated_at_timestamp BIGINT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
     )`
   ];
 
@@ -221,6 +221,41 @@ async function ensureTablesExist(client: Client) {
 async function migrateDatabaseSchema(client: Client) {
   console.log('Checking for database schema migrations...');
   
+  // Helper function to check if column exists and its type
+  const checkColumnType = async (tableName: string, columnName: string): Promise<string | null> => {
+    try {
+      const result = await client.query(`
+        SELECT data_type 
+        FROM information_schema.columns 
+        WHERE table_name = $1 AND column_name = $2
+      `, [tableName, columnName]);
+      
+      return result.rows.length > 0 ? result.rows[0].data_type : null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Helper function to safely add or convert updated_at column
+  const ensureUpdatedAtColumn = async (tableName: string) => {
+    const columnType = await checkColumnType(tableName, 'updated_at');
+    
+    if (columnType === null) {
+      // Column doesn't exist, add it as BIGINT for consistency
+      await client.query(`ALTER TABLE ${tableName} ADD COLUMN updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
+      console.log(`Added updated_at column to ${tableName}`);
+    } else if (columnType === 'timestamp with time zone' || columnType === 'timestamp without time zone') {
+      // Column exists as TIMESTAMP, convert to BIGINT
+      await client.query(`ALTER TABLE ${tableName} ALTER COLUMN updated_at TYPE BIGINT USING EXTRACT(EPOCH FROM updated_at) * 1000`);
+      await client.query(`ALTER TABLE ${tableName} ALTER COLUMN updated_at SET DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
+      console.log(`Converted updated_at column in ${tableName} from TIMESTAMP to BIGINT`);
+    } else if (columnType === 'bigint') {
+      // Column already exists as BIGINT, ensure default value
+      await client.query(`ALTER TABLE ${tableName} ALTER COLUMN updated_at SET DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
+      console.log(`Updated default value for updated_at column in ${tableName}`);
+    }
+  };
+  
   // Add missing columns to food_entries table
   const foodEntriesMigrations = [
     'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_calories DECIMAL',
@@ -234,22 +269,17 @@ async function migrateDatabaseSchema(client: Client) {
     'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS portion_multiplier DECIMAL',
     'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS portion_unit VARCHAR',
     'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS confidence DECIMAL',
-    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS ai_analysis TEXT',
-    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS ai_analysis TEXT'
   ];
 
   // Add missing columns to other tables
   const otherMigrations = [
-    'ALTER TABLE workout_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-    'ALTER TABLE biomarker_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
     'ALTER TABLE goals ADD COLUMN IF NOT EXISTS created_at_timestamp BIGINT',
-    'ALTER TABLE goals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
     'ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS created_at_timestamp BIGINT',
-    'ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at_timestamp BIGINT',
-    'ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+    'ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at_timestamp BIGINT'
   ];
 
-  // Execute all migrations
+  // Execute all migrations first
   const allMigrations = [...foodEntriesMigrations, ...otherMigrations];
   
   for (const migration of allMigrations) {
@@ -260,6 +290,16 @@ async function migrateDatabaseSchema(client: Client) {
       if (!error.message.includes('already exists')) {
         console.error('Migration error:', migration, error.message);
       }
+    }
+  }
+
+  // Handle updated_at columns for all tables
+  const tables = ['food_entries', 'workout_entries', 'biomarker_entries', 'goals', 'user_profiles'];
+  for (const table of tables) {
+    try {
+      await ensureUpdatedAtColumn(table);
+    } catch (error: any) {
+      console.error(`Error ensuring updated_at column in ${table}:`, error.message);
     }
   }
 
@@ -309,6 +349,7 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
       if (shouldSync) {
         console.log(`Syncing food entry: ${entry.name}`);
         try {
+          const now = Date.now();
           await client.query(
           `INSERT INTO food_entries (
             id, name, calories, protein, carbs, fat, fiber, sugar, sodium,
@@ -316,7 +357,7 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
             portion_multiplier, portion_unit, base_calories, base_protein,
             base_carbs, base_fat, base_fiber, base_sugar, base_sodium,
             show_manual_nutrition, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, CURRENT_TIMESTAMP)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
           ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             calories = EXCLUDED.calories,
@@ -341,14 +382,14 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
             base_sugar = EXCLUDED.base_sugar,
             base_sodium = EXCLUDED.base_sodium,
             show_manual_nutrition = EXCLUDED.show_manual_nutrition,
-            updated_at = CURRENT_TIMESTAMP`,
+            updated_at = $25`,
           [
             entry.id, entry.name, entry.calories, entry.protein, entry.carbs,
             entry.fat, entry.fiber, entry.sugar, entry.sodium, entry.imageUri,
             entry.timestamp, entry.mealType, entry.confidence, entry.aiAnalysis,
             entry.portionMultiplier, entry.portionUnit, entry.baseCalories,
             entry.baseProtein, entry.baseCarbs, entry.baseFat, entry.baseFiber,
-            entry.baseSugar, entry.baseSodium, entry.showManualNutrition
+            entry.baseSugar, entry.baseSodium, entry.showManualNutrition, now
           ]
         );
         syncedCounts.foodEntries++;
@@ -370,9 +411,10 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
         
       if (shouldSync) {
         console.log(`Syncing workout entry: ${entry.name}`);
+        const now = Date.now();
         await client.query(
           `INSERT INTO workout_entries (id, name, type, duration, calories, intensity, exercises, notes, timestamp, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
              type = EXCLUDED.type,
@@ -382,8 +424,8 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
              exercises = EXCLUDED.exercises,
              notes = EXCLUDED.notes,
              timestamp = EXCLUDED.timestamp,
-             updated_at = CURRENT_TIMESTAMP`,
-          [entry.id, entry.name, entry.type, entry.duration, entry.calories, entry.intensity, safeJsonStringify(entry.exercises), entry.notes, entry.timestamp]
+             updated_at = $10`,
+          [entry.id, entry.name, entry.type, entry.duration, entry.calories, entry.intensity, safeJsonStringify(entry.exercises), entry.notes, entry.timestamp, now]
         );
         syncedCounts.workoutEntries++;
       }
@@ -400,17 +442,18 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
         
       if (shouldSync) {
         console.log(`Syncing biomarker entry: ${entry.type} = ${entry.value}`);
+        const now = Date.now();
         await client.query(
           `INSERT INTO biomarker_entries (id, type, value, unit, timestamp, notes, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (id) DO UPDATE SET
              type = EXCLUDED.type,
              value = EXCLUDED.value,
              unit = EXCLUDED.unit,
              timestamp = EXCLUDED.timestamp,
              notes = EXCLUDED.notes,
-             updated_at = CURRENT_TIMESTAMP`,
-          [entry.id, entry.type, entry.value, entry.unit, entry.timestamp, entry.notes]
+             updated_at = $7`,
+          [entry.id, entry.type, entry.value, entry.unit, entry.timestamp, entry.notes, now]
         );
         syncedCounts.biomarkerEntries++;
       }
@@ -427,9 +470,10 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
         
       if (shouldSync) {
         console.log(`Syncing goal: ${goal.title}`);
+        const now = Date.now();
         await client.query(
           `INSERT INTO goals (id, title, description, type, target_value, current_value, unit, target_date, created_at_timestamp, is_completed, milestones, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
            ON CONFLICT (id) DO UPDATE SET
              title = EXCLUDED.title,
              description = EXCLUDED.description,
@@ -440,8 +484,8 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
              target_date = EXCLUDED.target_date,
              is_completed = EXCLUDED.is_completed,
              milestones = EXCLUDED.milestones,
-             updated_at = CURRENT_TIMESTAMP`,
-          [goal.id, goal.title, goal.description, goal.type, goal.targetValue, goal.currentValue, goal.unit, goal.targetDate, goal.createdAt, goal.isCompleted, safeJsonStringify(goal.milestones)]
+             updated_at = $12`,
+          [goal.id, goal.title, goal.description, goal.type, goal.targetValue, goal.currentValue, goal.unit, goal.targetDate, goal.createdAt, goal.isCompleted, safeJsonStringify(goal.milestones), now]
         );
         syncedCounts.goals++;
       }
@@ -453,9 +497,10 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
     const shouldSync = isFirstSync || (localData.userProfile.createdAt > lastSyncTimestamp);
     if (shouldSync) {
       console.log(`Syncing user profile: ${localData.userProfile.name}`);
+      const now = Date.now();
       await client.query(
         `INSERT INTO user_profiles (id, name, age, gender, height, activity_level, preferences, created_at_timestamp, updated_at_timestamp, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
            age = EXCLUDED.age,
@@ -464,7 +509,7 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
            activity_level = EXCLUDED.activity_level,
            preferences = EXCLUDED.preferences,
            updated_at_timestamp = EXCLUDED.updated_at_timestamp,
-           updated_at = CURRENT_TIMESTAMP`,
+           updated_at = $10`,
         [
           localData.userProfile.id,
           localData.userProfile.name,
@@ -474,7 +519,8 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
           localData.userProfile.activityLevel,
           safeJsonStringify(localData.userProfile.preferences),
           localData.userProfile.createdAt,
-          localData.userProfile.updatedAt || localData.userProfile.createdAt
+          localData.userProfile.updatedAt || localData.userProfile.createdAt,
+          now
         ]
       );
       syncedCounts.userProfile++;
