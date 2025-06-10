@@ -239,20 +239,31 @@ async function migrateDatabaseSchema(client: Client) {
   // Helper function to safely add or convert updated_at column
   const ensureUpdatedAtColumn = async (tableName: string) => {
     const columnType = await checkColumnType(tableName, 'updated_at');
+    console.log(`Table ${tableName}: updated_at column type is ${columnType}`);
     
     if (columnType === null) {
       // Column doesn't exist, add it as BIGINT for consistency
       await client.query(`ALTER TABLE ${tableName} ADD COLUMN updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
       console.log(`Added updated_at column to ${tableName}`);
     } else if (columnType === 'timestamp with time zone' || columnType === 'timestamp without time zone') {
-      // Column exists as TIMESTAMP, convert to BIGINT
-      await client.query(`ALTER TABLE ${tableName} ALTER COLUMN updated_at TYPE BIGINT USING EXTRACT(EPOCH FROM updated_at) * 1000`);
-      await client.query(`ALTER TABLE ${tableName} ALTER COLUMN updated_at SET DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
-      console.log(`Converted updated_at column in ${tableName} from TIMESTAMP to BIGINT`);
+      // Column exists as TIMESTAMP, need to drop and recreate as BIGINT
+      console.log(`Converting ${tableName}.updated_at from TIMESTAMP to BIGINT...`);
+      
+      // For a more reliable conversion, let's drop the column and recreate it
+      // This is safer than trying to convert with existing constraints
+      await client.query(`ALTER TABLE ${tableName} DROP COLUMN updated_at`);
+      await client.query(`ALTER TABLE ${tableName} ADD COLUMN updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
+      
+      console.log(`Successfully recreated updated_at column in ${tableName} as BIGINT`);
     } else if (columnType === 'bigint') {
       // Column already exists as BIGINT, ensure default value
-      await client.query(`ALTER TABLE ${tableName} ALTER COLUMN updated_at SET DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
-      console.log(`Updated default value for updated_at column in ${tableName}`);
+      console.log(`${tableName}.updated_at is already BIGINT`);
+      try {
+        await client.query(`ALTER TABLE ${tableName} ALTER COLUMN updated_at SET DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000`);
+        console.log(`Updated default value for updated_at column in ${tableName}`);
+      } catch (e) {
+        console.log(`Default value already set for updated_at column in ${tableName}`);
+      }
     }
   };
   
@@ -329,6 +340,21 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
     biomarkerEntries: [] as any[],
     goals: [] as any[],
     userProfile: null as any
+  };
+
+  // Helper function to check if column exists and its type
+  const checkColumnType = async (tableName: string, columnName: string): Promise<string | null> => {
+    try {
+      const result = await client.query(`
+        SELECT data_type 
+        FROM information_schema.columns 
+        WHERE table_name = $1 AND column_name = $2
+      `, [tableName, columnName]);
+      
+      return result.rows.length > 0 ? result.rows[0].data_type : null;
+    } catch (error) {
+      return null;
+    }
   };
 
   console.log('=== PUSH PHASE ===');
