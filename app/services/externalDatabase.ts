@@ -60,10 +60,12 @@ class ExternalDatabaseService {
   }
 
   private notifyConnectionChange() {
-    // Import here to avoid circular dependency
-    import('./autoBackup').then(({ autoSyncService }) => {
-      autoSyncService.restartSyncServices();
-    });
+    // Use a callback approach to avoid circular dependency
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('databaseConnectionChanged', {
+        detail: { connected: this.isConnected }
+      }));
+    }
   }
 
   async connect(connectionString: string): Promise<boolean> {
@@ -186,6 +188,11 @@ class ExternalDatabaseService {
         // Apply pulled data to local storage
         if (result.pulledData) {
           await this.applyPulledData(result.pulledData);
+          
+          // Trigger UI refresh for updated data - add small delay to ensure localStorage is updated
+          setTimeout(() => {
+            this.triggerAppDataRefresh();
+          }, 100);
         }
 
         // Update last sync timestamp
@@ -246,6 +253,11 @@ class ExternalDatabaseService {
         // Apply pulled data to local storage
         if (result.pulledData) {
           await this.applyPulledData(result.pulledData);
+          
+          // Trigger UI refresh for updated data - add small delay to ensure localStorage is updated
+          setTimeout(() => {
+            this.triggerAppDataRefresh();
+          }, 100);
         }
 
         // Update last sync timestamp
@@ -276,36 +288,84 @@ class ExternalDatabaseService {
   }
 
   /**
+   * Trigger app data refresh by dispatching a custom event
+   */
+  private triggerAppDataRefresh() {
+    if (typeof window !== 'undefined') {
+      console.log('Triggering app data refresh from sync...');
+      
+      // Dispatch custom event for React components listening for sync updates
+      window.dispatchEvent(new CustomEvent('dataRefreshNeeded', {
+        detail: { source: 'sync' }
+      }));
+      
+      // Also dispatch storage event as backup for components listening to localStorage changes
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'foodEntries',
+        newValue: localStorage.getItem('foodEntries'),
+        oldValue: null,
+        storageArea: localStorage
+      }));
+      
+      console.log('Data refresh events dispatched');
+    }
+  }
+
+  /**
    * Apply pulled data to local storage, merging intelligently
    */
   private async applyPulledData(pulledData: any) {
     try {
+      console.log('=== APPLYING PULLED DATA ===');
+      console.log('Pulled data counts:', {
+        foodEntries: pulledData.foodEntries?.length || 0,
+        workoutEntries: pulledData.workoutEntries?.length || 0,
+        biomarkerEntries: pulledData.biomarkerEntries?.length || 0,
+        goals: pulledData.goals?.length || 0,
+        userProfile: pulledData.userProfile ? 1 : 0
+      });
+
+      let hasUpdated = false;
+
       // Merge food entries
       if (pulledData.foodEntries && pulledData.foodEntries.length > 0) {
         const localFoodEntries = await databaseService.getFoodEntries();
+        console.log(`Merging ${pulledData.foodEntries.length} remote food entries with ${localFoodEntries.length} local entries`);
         const mergedFoodEntries = this.mergeDataArrays(localFoodEntries, pulledData.foodEntries);
         localStorage.setItem('foodEntries', JSON.stringify(mergedFoodEntries));
+        console.log(`Final merged food entries: ${mergedFoodEntries.length}`);
+        console.log('Sample merged food entries:', mergedFoodEntries.slice(0, 2).map(e => ({ id: e.id, name: e.name, timestamp: e.timestamp })));
+        hasUpdated = true;
       }
 
       // Merge workout entries
       if (pulledData.workoutEntries && pulledData.workoutEntries.length > 0) {
         const localWorkoutEntries = await databaseService.getWorkoutEntries();
+        console.log(`Merging ${pulledData.workoutEntries.length} remote workout entries with ${localWorkoutEntries.length} local entries`);
         const mergedWorkoutEntries = this.mergeDataArrays(localWorkoutEntries, pulledData.workoutEntries);
         localStorage.setItem('workoutEntries', JSON.stringify(mergedWorkoutEntries));
+        console.log(`Final merged workout entries: ${mergedWorkoutEntries.length}`);
+        hasUpdated = true;
       }
 
       // Merge biomarker entries
       if (pulledData.biomarkerEntries && pulledData.biomarkerEntries.length > 0) {
         const localBiomarkerEntries = await databaseService.getBiomarkerEntries();
+        console.log(`Merging ${pulledData.biomarkerEntries.length} remote biomarker entries with ${localBiomarkerEntries.length} local entries`);
         const mergedBiomarkerEntries = this.mergeDataArrays(localBiomarkerEntries, pulledData.biomarkerEntries);
         localStorage.setItem('biomarkerEntries', JSON.stringify(mergedBiomarkerEntries));
+        console.log(`Final merged biomarker entries: ${mergedBiomarkerEntries.length}`);
+        hasUpdated = true;
       }
 
       // Merge goals
       if (pulledData.goals && pulledData.goals.length > 0) {
         const localGoals = await databaseService.getGoals();
+        console.log(`Merging ${pulledData.goals.length} remote goals with ${localGoals.length} local goals`);
         const mergedGoals = this.mergeDataArrays(localGoals, pulledData.goals);
         localStorage.setItem('goals', JSON.stringify(mergedGoals));
+        console.log(`Final merged goals: ${mergedGoals.length}`);
+        hasUpdated = true;
       }
 
       // Update user profile (take the most recent one)
@@ -313,10 +373,21 @@ class ExternalDatabaseService {
         const localProfile = await databaseService.getUserProfile();
         if (!localProfile || pulledData.userProfile.updatedAt > (localProfile.updatedAt || 0)) {
           await databaseService.saveUserProfile(pulledData.userProfile);
+          console.log('User profile updated from sync');
+          hasUpdated = true;
         }
       }
 
-      console.log('Pulled data applied successfully');
+      if (hasUpdated) {
+        console.log('Pulled data applied successfully - triggering UI refresh');
+        // Force a localStorage change event for components that might listen to it
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'foodEntries',
+          newValue: localStorage.getItem('foodEntries')
+        }));
+      } else {
+        console.log('No new data to apply from sync');
+      }
     } catch (error) {
       console.error('Failed to apply pulled data:', error);
       throw error;
@@ -360,12 +431,11 @@ class ExternalDatabaseService {
     const userProfile = JSON.parse(localStorage.getItem('userProfile') || 'null');
 
     return {
-      userProfile,
       foodEntries,
       workoutEntries,
       biomarkerEntries,
       goals,
-      syncTimestamp: Date.now()
+      userProfile
     };
   }
 
@@ -442,6 +512,23 @@ class ExternalDatabaseService {
       console.error('Error checking for local changes:', error);
       return false;
     }
+  }
+
+  /**
+   * Reset sync timestamp to force a full resync of recent data
+   */
+  resetSyncTimestamp(): void {
+    this.lastSyncTimestamp = 0;
+    localStorage.setItem('lastSyncTimestamp', '0');
+    console.log('Sync timestamp reset - next sync will pull recent data from all sources');
+  }
+
+  /**
+   * Get formatted time until next sync
+   */
+  getFormattedTimeUntilNextSync(): string {
+    // This is just a placeholder - actual scheduling is handled by autoSyncService
+    return "When database is connected";
   }
 }
 

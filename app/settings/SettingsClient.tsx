@@ -107,6 +107,20 @@ export default function SettingsClient() {
 
   useEffect(() => {
     loadAllData();
+    
+    // Listen for data refresh events from sync operations
+    const handleDataRefresh = () => {
+      console.log('Data refresh triggered by sync operation');
+      loadAllData();
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('dataRefreshNeeded', handleDataRefresh);
+      
+      return () => {
+        window.removeEventListener('dataRefreshNeeded', handleDataRefresh);
+      };
+    }
   }, []);
 
   const loadAllData = async () => {
@@ -873,6 +887,22 @@ export default function SettingsClient() {
                         Manual Sync
                       </>
                     )}
+                  </button>
+                  
+                  <button
+                    onClick={async () => {
+                      if (confirm('Reset sync timestamp? This will force the next sync to pull recent data from all sources. Useful for debugging cross-device sync issues.')) {
+                        // Import externalDatabaseService
+                        const { externalDatabaseService } = await import('../services/externalDatabase');
+                        externalDatabaseService.resetSyncTimestamp();
+                        setLastSyncTime(0);
+                        showSuccess('Sync timestamp reset', 'Next sync will pull recent data from all sources');
+                      }
+                    }}
+                    className="btn btn-outline btn-sm"
+                    title="Reset sync timestamp for debugging"
+                  >
+                    🔄 Reset
                   </button>
                 </div>
 

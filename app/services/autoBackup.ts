@@ -20,6 +20,7 @@ export class AutoSyncService {
   private constructor() {
     this.loadSettings();
     this.initializeAutoSync();
+    this.setupDatabaseConnectionListener();
   }
 
   private loadSettings() {
@@ -129,6 +130,22 @@ export class AutoSyncService {
       clearInterval(this.pullInterval);
       this.pullInterval = null;
     }
+  }
+
+  private setupDatabaseConnectionListener() {
+    if (typeof window === 'undefined') return;
+    
+    window.addEventListener('databaseConnectionChanged', (event: any) => {
+      const { connected } = event.detail;
+      if (connected) {
+        console.log('Auto sync: Database connected, starting sync services');
+        this.startAutoSync();
+        this.startPullChecks();
+      } else {
+        console.log('Auto sync: Database disconnected, stopping sync services');
+        this.stopAutoSync();
+      }
+    });
   }
 
   // Restart sync services when database connection changes

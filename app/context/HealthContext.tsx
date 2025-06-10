@@ -224,19 +224,21 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadDataForDate(state.selectedDate);
     
-    // Listen for auto-sync data updates
-    const handleAutoSyncUpdate = () => {
-      console.log('Auto-sync data update detected, refreshing local data...');
+    // Listen for data refresh events from sync services
+    const handleDataRefresh = (event: Event) => {
+      console.log('Data refresh event detected:', event.type, 'reloading local data...');
       loadDataForDate(state.selectedDate);
     };
     
     if (typeof window !== 'undefined') {
-      window.addEventListener('autoSyncDataUpdate', handleAutoSyncUpdate);
+      window.addEventListener('autoSyncDataUpdate', handleDataRefresh);
+      window.addEventListener('dataRefreshNeeded', handleDataRefresh);
     }
     
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('autoSyncDataUpdate', handleAutoSyncUpdate);
+        window.removeEventListener('autoSyncDataUpdate', handleDataRefresh);
+        window.removeEventListener('dataRefreshNeeded', handleDataRefresh);
       }
     };
   }, [state.selectedDate]);
@@ -249,11 +251,34 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       const startOfDay = new Date(date).setHours(0, 0, 0, 0);
       const endOfDay = new Date(date).setHours(23, 59, 59, 999);
       
+      console.log('Loading data for date:', date);
+      console.log('Date range:', new Date(startOfDay), 'to', new Date(endOfDay));
+      
       const [foodEntries, workoutEntries, biomarkerEntries] = await Promise.all([
         databaseService.getFoodEntries(startOfDay, endOfDay),
         databaseService.getWorkoutEntries(startOfDay, endOfDay),
         databaseService.getBiomarkerEntries(undefined, startOfDay, endOfDay),
       ]);
+      
+      console.log('Loaded data counts:', {
+        foodEntries: foodEntries.length,
+        workoutEntries: workoutEntries.length,
+        biomarkerEntries: biomarkerEntries.length
+      });
+      
+      // If no food entries found for today, also check recent entries (last 7 days) for debugging
+      if (foodEntries.length === 0) {
+        const recentStartDate = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7 days ago
+        const allRecentFoodEntries = await databaseService.getFoodEntries(recentStartDate);
+        console.log('No food entries for selected date. Recent entries (last 7 days):', allRecentFoodEntries.length);
+        if (allRecentFoodEntries.length > 0) {
+          console.log('Recent food sample:', allRecentFoodEntries.slice(0, 3).map(e => ({
+            name: e.name,
+            timestamp: e.timestamp,
+            date: new Date(e.timestamp).toLocaleDateString()
+          })));
+        }
+      }
       
       // Extract water entries from biomarker entries
       const waterEntries: WaterEntry[] = biomarkerEntries
