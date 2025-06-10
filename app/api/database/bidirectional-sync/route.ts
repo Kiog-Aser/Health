@@ -170,11 +170,11 @@ async function ensureTablesExist(client: Client) {
       description TEXT,
       type VARCHAR NOT NULL,
       target_value DECIMAL NOT NULL,
-      current_value DECIMAL NOT NULL,
+      current_value DECIMAL DEFAULT 0,
       unit VARCHAR NOT NULL,
       target_date BIGINT NOT NULL,
       created_at_timestamp BIGINT NOT NULL,
-      is_completed BOOLEAN NOT NULL,
+      is_completed BOOLEAN DEFAULT FALSE,
       milestones JSONB,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -183,44 +183,87 @@ async function ensureTablesExist(client: Client) {
     `CREATE TABLE IF NOT EXISTS user_profiles (
       id VARCHAR PRIMARY KEY,
       name VARCHAR NOT NULL,
-      age INTEGER NOT NULL,
-      gender VARCHAR NOT NULL,
-      height DECIMAL NOT NULL,
-      activity_level VARCHAR NOT NULL,
-      preferences JSONB NOT NULL,
+      age INTEGER,
+      gender VARCHAR,
+      height DECIMAL,
+      activity_level VARCHAR,
+      preferences JSONB,
       created_at_timestamp BIGINT NOT NULL,
-      updated_at_timestamp BIGINT,
+      updated_at_timestamp BIGINT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`
   ];
 
+  // Execute table creation
   for (const query of createTableQueries) {
+    await client.query(query);
+  }
+
+  // Add missing columns to existing tables (migration)
+  await migrateDatabaseSchema(client);
+
+  // Create indexes for better performance
+  const indexQueries = [
+    `CREATE INDEX IF NOT EXISTS idx_food_entries_timestamp ON food_entries(timestamp)`,
+    `CREATE INDEX IF NOT EXISTS idx_food_entries_meal_type ON food_entries(meal_type)`,
+    `CREATE INDEX IF NOT EXISTS idx_workout_entries_timestamp ON workout_entries(timestamp)`,
+    `CREATE INDEX IF NOT EXISTS idx_biomarker_entries_timestamp ON biomarker_entries(timestamp)`,
+    `CREATE INDEX IF NOT EXISTS idx_biomarker_entries_type ON biomarker_entries(type)`,
+    `CREATE INDEX IF NOT EXISTS idx_goals_created_at ON goals(created_at_timestamp)`
+  ];
+
+  for (const query of indexQueries) {
+    await client.query(query);
+  }
+}
+
+async function migrateDatabaseSchema(client: Client) {
+  console.log('Checking for database schema migrations...');
+  
+  // Add missing columns to food_entries table
+  const foodEntriesMigrations = [
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_calories DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_protein DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_carbs DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_fat DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_fiber DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_sugar DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS base_sodium DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS show_manual_nutrition BOOLEAN',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS portion_multiplier DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS portion_unit VARCHAR',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS confidence DECIMAL',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS ai_analysis TEXT',
+    'ALTER TABLE food_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+  ];
+
+  // Add missing columns to other tables
+  const otherMigrations = [
+    'ALTER TABLE workout_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+    'ALTER TABLE biomarker_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+    'ALTER TABLE goals ADD COLUMN IF NOT EXISTS created_at_timestamp BIGINT',
+    'ALTER TABLE goals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+    'ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS created_at_timestamp BIGINT',
+    'ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at_timestamp BIGINT',
+    'ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+  ];
+
+  // Execute all migrations
+  const allMigrations = [...foodEntriesMigrations, ...otherMigrations];
+  
+  for (const migration of allMigrations) {
     try {
-      await client.query(query);
-    } catch (error) {
-      console.error('Error creating table:', error);
-      // Continue with other tables even if one fails
+      await client.query(migration);
+    } catch (error: any) {
+      // Ignore "column already exists" errors
+      if (!error.message.includes('already exists')) {
+        console.error('Migration error:', migration, error.message);
+      }
     }
   }
-  
-  // Check if columns exist and add them if they don't
-  try {
-    // Add created_at_timestamp column to goals if it doesn't exist
-    await client.query(`
-      ALTER TABLE goals 
-      ADD COLUMN IF NOT EXISTS created_at_timestamp BIGINT
-    `);
-    
-    // Add timestamp columns to user_profiles if they don't exist
-    await client.query(`
-      ALTER TABLE user_profiles 
-      ADD COLUMN IF NOT EXISTS created_at_timestamp BIGINT,
-      ADD COLUMN IF NOT EXISTS updated_at_timestamp BIGINT
-    `);
-  } catch (error) {
-    console.error('Error adding columns:', error);
-  }
+
+  console.log('Database schema migrations completed');
 }
 
 async function performBidirectionalSync(client: Client, localData: SyncData, lastSyncTimestamp: number, isFirstSync: boolean) {
@@ -240,12 +283,12 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
     userProfile: 0
   };
 
-  const pulledData: SyncData = {
-    foodEntries: [],
-    workoutEntries: [],
-    biomarkerEntries: [],
-    goals: [],
-    userProfile: null
+  const pulledData = {
+    foodEntries: [] as any[],
+    workoutEntries: [] as any[],
+    biomarkerEntries: [] as any[],
+    goals: [] as any[],
+    userProfile: null as any
   };
 
   console.log('=== PUSH PHASE ===');
@@ -265,7 +308,8 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
         
       if (shouldSync) {
         console.log(`Syncing food entry: ${entry.name}`);
-        await client.query(
+        try {
+          await client.query(
           `INSERT INTO food_entries (
             id, name, calories, protein, carbs, fat, fiber, sugar, sodium,
             image_uri, timestamp, meal_type, confidence, ai_analysis,
@@ -308,6 +352,10 @@ async function performBidirectionalSync(client: Client, localData: SyncData, las
           ]
         );
         syncedCounts.foodEntries++;
+        } catch (error) {
+          console.error(`Failed to sync food entry ${entry.name}:`, error);
+          throw error; // Re-throw to stop the sync process
+        }
       }
     }
   }
