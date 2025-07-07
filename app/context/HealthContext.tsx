@@ -3,6 +3,7 @@
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { databaseService } from '../services/database';
 import { autoSyncService } from '../services/autoBackup';
+import { stepService } from '../services/stepService';
 import { FoodEntry, WorkoutEntry, BiomarkerEntry, DailyStats } from '../types';
 
 interface WaterEntry {
@@ -63,6 +64,7 @@ type HealthAction =
   | { type: 'ADD_WATER_ENTRY'; payload: WaterEntry }
   | { type: 'SET_NUTRITION_GOALS'; payload: HealthState['nutritionGoals'] }
   | { type: 'UPDATE_DAILY_PROGRESS' }
+  | { type: 'SET_STEPS'; payload: number }
   | { type: 'CALCULATE_HEALTH_SCORE' }
   | { type: 'REFRESH_ALL_DATA' };
 
@@ -168,11 +170,20 @@ function healthReducer(state: HealthState, action: HealthAction): HealthState {
             fiber: totalFiber,
           },
           water: totalWater,
-          steps: 0,  // This would come from step tracking
+          steps: state.dailyProgress.steps,
           workoutMinutes,
         }
       };
     }
+    
+    case 'SET_STEPS':
+      return {
+        ...state,
+        dailyProgress: {
+          ...state.dailyProgress,
+          steps: action.payload,
+        },
+      };
     
     case 'CALCULATE_HEALTH_SCORE': {
       let score = 0;
@@ -224,6 +235,11 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadDataForDate(state.selectedDate);
     
+    // Start step tracking on mount (client-only)
+    stepService.start((steps) => {
+      dispatch({ type: 'SET_STEPS', payload: steps });
+    });
+    
     // Listen for data refresh events from sync services
     const handleDataRefresh = (event: Event) => {
       console.log('Data refresh event detected:', event.type, 'reloading local data...');
@@ -240,6 +256,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
         window.removeEventListener('autoSyncDataUpdate', handleDataRefresh);
         window.removeEventListener('dataRefreshNeeded', handleDataRefresh);
       }
+      
+      stepService.stop();
     };
   }, [state.selectedDate]);
 

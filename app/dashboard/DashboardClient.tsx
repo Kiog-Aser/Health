@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Camera, Dumbbell, Activity, Target, Calendar, RefreshCw, TrendingUp, Plus, Flame, Droplets, Footprints, Clock, Zap, Brain } from 'lucide-react';
+import { Camera, Dumbbell, Activity, Calendar, RefreshCw, TrendingUp, Plus, Droplets, Footprints, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useHealth } from '../context/HealthContext';
 import AppLayout from '../components/layout/AppLayout';
@@ -9,7 +9,6 @@ import CalorieRing from '../components/ui/CalorieRing';
 import MacroBreakdown from '../components/ui/MacroBreakdown';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import FoodDetailModal from '../components/ui/FoodDetailModal';
-import CameraDebugger from '../components/CameraDebugger';
 import WaterTrackerOverlay from '../components/WaterTrackerOverlay';
 import { FoodEntry } from '../types';
 
@@ -144,7 +143,7 @@ export default function DashboardClient() {
             <Plus className="w-5 h-5 text-primary" />
             Quick Actions
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <button 
               onClick={() => router.push('/food')}
               className="group flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
@@ -172,13 +171,6 @@ export default function DashboardClient() {
             >
               <TrendingUp className="w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-sm font-medium text-center">Weekly Check-in</span>
-            </button>
-            <button 
-              onClick={() => router.push('/health-ai')}
-              className="group flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
-            >
-              <Brain className="w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium text-center">Health AI</span>
             </button>
           </div>
         </div>
@@ -284,9 +276,6 @@ export default function DashboardClient() {
             </div>
           </div>
         </div>
-
-        {/* Camera Debugger - Temporary for Testing */}
-        <CameraDebugger />
       </div>
 
       {/* Food Detail Modal */}

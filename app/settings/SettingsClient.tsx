@@ -9,7 +9,6 @@ import {
   Scale, 
   Settings, 
   Bell, 
-  Shield, 
   Save,
   Edit,
   Plus,
@@ -405,6 +404,33 @@ export default function SettingsClient() {
         return '🩺';
       default:
         return '🎯';
+    }
+  };
+
+  const handleNotificationToggle = async (
+    key: keyof UserProfile['preferences']['notifications'],
+    value: boolean
+  ) => {
+    if (!profile) return;
+    try {
+      const updatedProfile: UserProfile = {
+        ...profile,
+        preferences: {
+          ...profile.preferences,
+          notifications: {
+            ...profile.preferences.notifications,
+            [key]: value,
+          },
+        },
+      };
+      setProfile(updatedProfile);
+      await databaseService.saveUserProfile(updatedProfile);
+      // Re-init notifications with new prefs
+      await notificationService.initializeNotifications(updatedProfile.preferences.notifications);
+      showSuccess('Preferences saved');
+    } catch (error) {
+      console.error('Failed to save notification prefs', error);
+      showError('Failed to save preferences', 'Please try again');
     }
   };
 
@@ -960,20 +986,54 @@ export default function SettingsClient() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span>Meal Reminders</span>
-                  <input type="checkbox" className="toggle toggle-primary" defaultChecked={profile.preferences.notifications.mealReminders} />
+                  <input 
+                    type="checkbox" 
+                    className="toggle toggle-primary" 
+                    checked={profile.preferences.notifications.mealReminders}
+                    onChange={(e) => handleNotificationToggle('mealReminders', e.target.checked)}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Workout Reminders</span>
-                  <input type="checkbox" className="toggle toggle-primary" defaultChecked={profile.preferences.notifications.workoutReminders} />
+                  <input 
+                    type="checkbox" 
+                    className="toggle toggle-primary" 
+                    checked={profile.preferences.notifications.workoutReminders}
+                    onChange={(e) => handleNotificationToggle('workoutReminders', e.target.checked)}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Goal Reminders</span>
-                  <input type="checkbox" className="toggle toggle-primary" defaultChecked={profile.preferences.notifications.goalReminders} />
+                  <input 
+                    type="checkbox" 
+                    className="toggle toggle-primary" 
+                    checked={profile.preferences.notifications.goalReminders}
+                    onChange={(e) => handleNotificationToggle('goalReminders', e.target.checked)}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Weekly Reports</span>
-                  <input type="checkbox" className="toggle toggle-primary" defaultChecked={profile.preferences.notifications.weeklyReports} />
+                  <input 
+                    type="checkbox" 
+                    className="toggle toggle-primary" 
+                    checked={profile.preferences.notifications.weeklyReports}
+                    onChange={(e) => handleNotificationToggle('weeklyReports', e.target.checked)}
+                  />
                 </div>
+              </div>
+
+              {/* Test Notification button for debugging */}
+              <div className="mt-4">
+                <button
+                  onClick={async () => {
+                    await notificationService.showNotification('Test Notification', {
+                      body: 'This is a test push from HealthTracker Pro',
+                    });
+                  }}
+                  className="btn btn-ghost btn-sm"
+                >
+                  Send Test Notification
+                </button>
               </div>
             </div>
 
@@ -998,24 +1058,6 @@ export default function SettingsClient() {
                     <option value="metric">Metric</option>
                     <option value="imperial">Imperial</option>
                   </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Privacy */}
-            <div className="health-card">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
-                Privacy
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span>Data Sharing</span>
-                  <input type="checkbox" className="toggle toggle-primary" defaultChecked={profile.preferences.privacy.dataSharing} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Analytics</span>
-                  <input type="checkbox" className="toggle toggle-primary" defaultChecked={profile.preferences.privacy.analytics} />
                 </div>
               </div>
             </div>
