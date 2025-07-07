@@ -39,31 +39,23 @@ export default function FoodClient() {
   const [savedMeals, setSavedMeals] = useState<any[]>([]);
   const [mealToSave, setMealToSave] = useState<string>('');
   const [allRecentFood, setAllRecentFood] = useState<FoodEntry[]>([]);
-  const [showSyncDebug, setShowSyncDebug] = useState(false);
 
-  // Load all recent food entries for sync debugging
+  // Load saved meals and recent food entries (debug disabled for prod)
   useEffect(() => {
-    const loadAllRecentFood = async () => {
+    const loadInitialData = async () => {
       try {
-        const recentStartDate = Date.now() - 7 * 24 * 60 * 60 * 1000; // Last 7 days
+        const meals = await databaseService.getSavedMeals();
+        setSavedMeals(meals);
+
+        // Recent food only needed internally; not shown anymore
+        const recentStartDate = Date.now() - 7 * 24 * 60 * 60 * 1000;
         const allRecent = await databaseService.getFoodEntries(recentStartDate);
         setAllRecentFood(allRecent);
       } catch (error) {
-        console.error('Failed to load recent food entries:', error);
+        console.error('Failed to load initial food data:', error);
       }
     };
-    
-    loadAllRecentFood();
-    
-    // Also reload when data refresh events occur
-    const handleDataRefresh = () => {
-      loadAllRecentFood();
-    };
-    
-    if (typeof window !== 'undefined') {
-      window.addEventListener('dataRefreshNeeded', handleDataRefresh);
-      return () => window.removeEventListener('dataRefreshNeeded', handleDataRefresh);
-    }
+    loadInitialData();
   }, []);
 
   const [newEntry, setNewEntry] = useState({
@@ -253,12 +245,14 @@ export default function FoodClient() {
       totalProtein: mealEntries.reduce((sum, item) => sum + item.protein, 0),
       totalCarbs: mealEntries.reduce((sum, item) => sum + item.carbs, 0),
       totalFat: mealEntries.reduce((sum, item) => sum + item.fat, 0),
+      totalFiber: mealEntries.reduce((sum, item) => sum + item.fiber, 0),
       createdAt: Date.now(),
     };
 
     setSavedMeals([...savedMeals, savedMeal]);
     setMealToSave('');
     showSuccess('Meal Saved', `${savedMeal.name} has been saved for quick access.`);
+    databaseService.addSavedMeal(savedMeal);
   };
 
   const handleAddSavedMeal = async (savedMeal: any) => {
@@ -282,6 +276,7 @@ export default function FoodClient() {
   const handleDeleteSavedMeal = (mealId: string) => {
     setSavedMeals(prev => prev.filter(meal => meal.id !== mealId));
     showSuccess('Saved Meal Removed', 'Saved meal has been removed.');
+    databaseService.deleteSavedMeal(mealId);
   };
 
   if (state.isLoading) {
@@ -388,65 +383,7 @@ export default function FoodClient() {
         </div>
 
         {/* Daily Overview */}
-        {/* Sync Debug Section (temporary) */}
-        {allRecentFood.length > 0 && (
-          <div className="health-card p-4 border-l-4 border-warning">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-warning">🔄 Sync Debug Info</h3>
-              <button 
-                onClick={() => setShowSyncDebug(!showSyncDebug)}
-                className="btn btn-xs btn-outline"
-              >
-                {showSyncDebug ? 'Hide' : 'Show'} Recent Data
-              </button>
-            </div>
-            {showSyncDebug && (
-              <div className="space-y-2">
-                <p className="text-xs text-base-content/60">
-                  Found {allRecentFood.length} food entries in last 7 days (regardless of selected date):
-                </p>
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {allRecentFood.slice(0, 5).map((entry) => (
-                    <div key={entry.id} className="text-xs p-2 bg-warning/5 rounded border">
-                      <div className="font-medium">{entry.name} - {entry.calories} cal</div>
-                      <div className="text-base-content/50">
-                        {new Date(entry.timestamp).toLocaleString()} • Meal: {entry.mealType}
-                      </div>
-                    </div>
-                  ))}
-                  {allRecentFood.length > 5 && (
-                    <div className="text-xs text-center text-base-content/50">
-                      +{allRecentFood.length - 5} more entries
-                    </div>
-                  )}
-                </div>
-                <div className="text-xs text-base-content/60 mt-2">
-                  Today's entries showing above: {state.foodEntries.length} 
-                  {state.foodEntries.length === 0 && allRecentFood.length > 0 && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-warning">
-                        ⚠️ Recent data exists but not showing for today - possible date filter issue
-                      </span>
-                      <button 
-                        onClick={() => {
-                          // Switch to a date where we have food entries
-                          const recentEntry = allRecentFood[0];
-                          if (recentEntry) {
-                            const entryDate = new Date(recentEntry.timestamp).toISOString().split('T')[0];
-                            actions.setDate(entryDate);
-                          }
-                        }}
-                        className="btn btn-xs btn-warning"
-                      >
-                        View {new Date(allRecentFood[0]?.timestamp).toLocaleDateString()}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Sync Debug Section removed for production */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">

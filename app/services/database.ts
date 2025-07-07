@@ -8,7 +8,8 @@ import {
   HealthReport, 
   AIInsight,
   Exercise,
-  ExerciseSet 
+  ExerciseSet,
+  SavedMeal
 } from '../types';
 
 class DatabaseService {
@@ -43,7 +44,8 @@ class DatabaseService {
       'healthReports',
       'aiInsights',
       'customExercises',
-      'exerciseSets'
+      'exerciseSets',
+      'savedMeals'
     ];
 
     dataTypes.forEach(type => {
@@ -320,6 +322,28 @@ class DatabaseService {
       .slice(0, limit);
   }
 
+  // Saved Meal Methods
+  async addSavedMeal(meal: SavedMeal): Promise<void> {
+    if (typeof window === 'undefined') return;
+    const meals = await this.getSavedMeals();
+    meals.push(meal);
+    localStorage.setItem('savedMeals', JSON.stringify(meals));
+  }
+
+  async getSavedMeals(): Promise<SavedMeal[]> {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('savedMeals');
+    const meals = data ? JSON.parse(data) : [];
+    return meals.sort((a: any, b: any) => b.createdAt - a.createdAt);
+  }
+
+  async deleteSavedMeal(id: string): Promise<void> {
+    if (typeof window === 'undefined') return;
+    const meals = await this.getSavedMeals();
+    const filtered = meals.filter((m: any) => m.id !== id);
+    localStorage.setItem('savedMeals', JSON.stringify(filtered));
+  }
+
   // Utility Methods
   async deleteOldData(olderThanDays: number = 365): Promise<void> {
     if (typeof window === 'undefined') return;
@@ -353,6 +377,7 @@ class DatabaseService {
       aiInsights: await this.getAIInsights(),
       customExercises: await this.getCustomExercises(),
       exerciseSets: await this.getAllExerciseSets(),
+      savedMeals: await this.getSavedMeals(),
       exportedAt: Date.now()
     };
     return JSON.stringify(data, null, 2);
@@ -397,6 +422,10 @@ class DatabaseService {
       
       if (data.exerciseSets) {
         localStorage.setItem('exerciseSets', JSON.stringify(data.exerciseSets));
+      }
+      
+      if (data.savedMeals) {
+        localStorage.setItem('savedMeals', JSON.stringify(data.savedMeals));
       }
       
       console.log('Data imported successfully');
